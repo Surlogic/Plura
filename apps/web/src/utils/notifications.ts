@@ -40,8 +40,8 @@ export const PROFESSIONAL_NOTIFICATION_STATUS_OPTIONS: Array<{
   label: string;
 }> = [
   { value: 'ALL', label: 'Todas' },
-  { value: 'UNREAD', label: 'No leidas' },
-  { value: 'READ', label: 'Leidas' },
+  { value: 'UNREAD', label: 'No leídas' },
+  { value: 'READ', label: 'Leídas' },
 ];
 
 export const PROFESSIONAL_NOTIFICATION_TYPE_OPTIONS: ProfessionalNotificationTypeOption[] = [
@@ -203,13 +203,13 @@ export const getProfessionalNotificationActionLabel = (
 };
 
 export const getProfessionalNotificationDropdownEmptyCopy = () => ({
-  title: 'Todavia no hay novedades',
-  description: 'Cuando entren reservas, confirmaciones o pagos relevantes, vas a ver el resumen aca.',
+  title: 'Todavía no hay novedades',
+  description: 'Cuando entren reservas, confirmaciones o pagos relevantes, vas a ver el resumen acá.',
 });
 
 export const getProfessionalNotificationDropdownErrorCopy = () => ({
   title: 'No pudimos cargar el preview',
-  description: 'Podés abrir el inbox completo para revisar la actividad desde la pantalla dedicada.',
+  description: 'Podés abrir el historial completo para revisar la actividad desde la pantalla dedicada.',
 });
 
 export const getProfessionalNotificationsEmptyStateCopy = ({
@@ -222,14 +222,14 @@ export const getProfessionalNotificationsEmptyStateCopy = ({
   if (status === 'UNREAD') {
     return {
       title: 'No hay notificaciones sin leer',
-      description: 'Cuando entren novedades pendientes, las vas a ver primero aca.',
+      description: 'Cuando entren novedades pendientes, las vas a ver primero acá.',
     };
   }
 
   if (status === 'READ') {
     return {
-      title: 'No hay notificaciones leidas',
-      description: 'A medida que revises el inbox, el historial va a quedar disponible aca.',
+      title: 'No hay notificaciones leídas',
+      description: 'A medida que revises las novedades, el historial va a quedar disponible acá.',
     };
   }
 
@@ -241,7 +241,7 @@ export const getProfessionalNotificationsEmptyStateCopy = ({
   }
 
   return {
-    title: 'Todavia no hay notificaciones',
-    description: 'Cuando entren reservas, pagos o cambios relevantes, el inbox se va a poblar aca.',
+    title: 'Todavía no hay notificaciones',
+    description: 'Cuando entren reservas, pagos o cambios relevantes, el historial se va a poblar acá.',
   };
 };

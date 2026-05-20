@@ -67,9 +67,9 @@ const menuSections: MenuSection[] = [
   {
     label: 'Cuenta',
     items: [
-      { label: 'Acceso', href: '/profesional/dashboard/acceso', icon: 'configuracion' },
       { label: 'Facturación', href: '/profesional/dashboard/billing', icon: 'plan' },
       { label: 'Configuración', href: '/profesional/dashboard/configuracion', icon: 'configuracion' },
+      { label: 'Acceso', href: '/profesional/dashboard/acceso', icon: 'configuracion' },
     ],
   },
 ];

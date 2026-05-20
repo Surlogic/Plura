@@ -62,19 +62,6 @@ export default function ProfessionalDashboardShell({
           </aside>
         ) : null}
 
-        {isSidebarHidden ? (
-          <div className="hidden border-r border-[#E2E8F0] bg-white px-3 py-4 lg:block">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => updateSidebarHidden(false)}
-            >
-              Mostrar menú
-            </Button>
-          </div>
-        ) : null}
-
         <div
           className={cn(
             'flex min-w-0 flex-1 flex-col bg-[#F8FAFC]',
@@ -84,7 +71,7 @@ export default function ProfessionalDashboardShell({
         >
           <div className="border-b border-[#E2E8F0] bg-white px-4 py-3 sm:px-6 lg:hidden">
             <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
-              {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              {isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
             </Button>
           </div>
 
@@ -102,6 +89,18 @@ export default function ProfessionalDashboardShell({
               contentClassName,
             )}
           >
+            {isSidebarHidden ? (
+              <div className="mb-3 hidden lg:flex">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => updateSidebarHidden(false)}
+                >
+                  Mostrar menú
+                </Button>
+              </div>
+            ) : null}
             {children}
           </main>
         </div>

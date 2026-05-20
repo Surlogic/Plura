@@ -67,10 +67,10 @@ export default function ProfesionalBillingPage() {
   );
 
   const connectionCopy = getMercadoPagoConnectionStatusCopy(connection);
-  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Proximamente';
+  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Próximamente';
   const mercadoPagoTitle = canUseOnlinePayments
     ? connectionCopy.title
-    : 'Cobros online proximamente';
+    : 'Cobros online próximamente';
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
   const hasValidCoreAccess =
@@ -116,9 +116,9 @@ export default function ProfesionalBillingPage() {
     <ProfessionalDashboardShell profile={profile} active="Facturación">
       <div className="space-y-6">
               <DashboardPageHeader
-                eyebrow="Facturación"
-                title="Suscripción y cobros"
-                description="Gestioná el estado de tu suscripción y la conexión de cobros online."
+                eyebrow="CUENTA"
+                title="Facturación"
+                description="Gestioná tu suscripción y los cobros online."
                 meta={
                   <>
                     <DashboardHeaderBadge tone="accent">
@@ -129,11 +129,25 @@ export default function ProfesionalBillingPage() {
                     </DashboardHeaderBadge>
                   </>
                 }
-                actions={
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${currentStatusClassName}`}>
-                    {currentStatusLabel}
-                  </span>
-                }
+                actions={showCheckoutPending ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleVerifyBillingStatus}
+                    disabled={isRefreshingSubscriptionStatus}
+                  >
+                    {isRefreshingSubscriptionStatus ? 'Verificando...' : 'Verificar estado'}
+                  </Button>
+                ) : showExpired ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleActivateCore}
+                    disabled={isRedirectingToCheckout}
+                  >
+                    {isRedirectingToCheckout ? 'Redirigiendo...' : 'Activar suscripción'}
+                  </Button>
+                ) : null}
               />
 
               {banner ? (
@@ -237,7 +251,7 @@ export default function ProfesionalBillingPage() {
                       <div className="rounded-[18px] border border-[#BFDBFE] bg-[#EFF6FF] p-5 text-sm text-[#1D4ED8]">
                         <p className="font-semibold">Prueba gratuita activa</p>
                         <p className="mt-2">Finaliza: {formatBillingDate(subscription?.trialEndAt)}</p>
-                        <p className="mt-1">Dias restantes: {subscription?.trialDaysRemaining ?? 'No disponible'}</p>
+                        <p className="mt-1">Días restantes: {subscription?.trialDaysRemaining ?? 'No disponible'}</p>
                         <p className="mt-1">Luego: suscripción mensual de Plura.</p>
                         {subscription?.paymentMethodAttached === false ? (
                           <p className="mt-3 rounded-[14px] border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[#B45309]">
@@ -249,8 +263,8 @@ export default function ProfesionalBillingPage() {
 
                     {showCheckoutPending ? (
                       <div className="rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-5 text-sm text-[#92400E]">
-                        <p className="font-semibold">Activacion pendiente</p>
-                        <p className="mt-2">Termina la autorizacion en Mercado Pago para activar la prueba.</p>
+                        <p className="font-semibold">Activación pendiente</p>
+                        <p className="mt-2">Terminá la autorización en Mercado Pago para activar la prueba.</p>
                         <p className="mt-2">Si ya completaste Mercado Pago, verificá el estado. El webhook puede tardar unos minutos.</p>
                         <div className="mt-4 flex flex-wrap gap-3">
                           <Button
@@ -302,7 +316,7 @@ export default function ProfesionalBillingPage() {
                       />
                     ) : (
                       <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 text-sm text-[#64748B] shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        Cobros online proximamente.
+                        Cobros online próximamente.
                       </div>
                     )}
                   </section>

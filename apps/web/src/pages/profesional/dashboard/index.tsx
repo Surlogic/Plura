@@ -15,7 +15,6 @@ import {
   DashboardPageHeader,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
-import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
 import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
@@ -621,7 +620,6 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
 
 export default function ProfesionalDashboardPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
-  const { count: unreadNotificationCount } = useProfessionalNotificationUnreadCount();
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
@@ -1127,8 +1125,9 @@ export default function ProfesionalDashboardPage() {
     <ProfessionalDashboardShell profile={profile} active="Agenda">
       <div className="space-y-6">
         <DashboardPageHeader
+          eyebrow="OPERACIÓN"
           title="Agenda"
-          description="Gestiona tus reservas y visualiza tu calendario semanal"
+          description="Visualizá tus reservas y tu calendario semanal."
           actions={(
             <>
               <Button
@@ -1139,20 +1138,6 @@ export default function ProfesionalDashboardPage() {
               >
                 <DashboardIcon name="agenda" className="mr-2 h-4 w-4" />
                 Hoy
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                aria-label="Abrir notificaciones"
-                onClick={() => {
-                  requestNavigation('/profesional/notificaciones');
-                }}
-                className="relative h-9 w-9 rounded-xl border-[#E2E8F0] bg-white px-0 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
-              >
-                <DashboardIcon name="notificaciones" className="h-4 w-4" />
-                {unreadNotificationCount > 0 ? (
-                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#0F766E]" />
-                ) : null}
               </Button>
               <Button
                 type="button"

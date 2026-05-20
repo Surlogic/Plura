@@ -238,7 +238,7 @@ Lectura de producto:
 
 - esta area concentra el valor de `Profesional` y buena parte de `Local`
 - `servicios`, `horarios`, `reservas`, `presencia-publica` y `notificaciones` son el corazon operativo
-- `acceso`, `billing` y `configuracion` viven separados dentro del grupo `Cuenta` del sidebar; `acceso` concentra email, slug publico, sesion actual y logout, mientras `configuracion` queda para seguridad, politicas, apariencia y acciones sensibles
+- `billing`, `configuracion` y `acceso` viven separados dentro del grupo `Cuenta` del sidebar; `acceso` concentra email, slug publico, sesion actual y logout, mientras `configuracion` queda para seguridad, politicas, apariencia y acciones sensibles
 - `/profesional/dashboard/configuracion` cierra solo la faceta profesional con `DELETE /auth/professional-profile` desde `ctx=PROFESSIONAL`; si la misma cuenta tambien conserva cliente, cambia explicitamente a `ctx=CLIENT` al terminar.
 - el multiequipo ya tiene puntos clave armados en web y mobile:
   - backend de equipo (`/profesional/team*`)

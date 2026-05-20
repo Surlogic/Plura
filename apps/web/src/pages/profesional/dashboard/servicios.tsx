@@ -101,12 +101,12 @@ const PROCESSING_FEE_OPTIONS: Array<{
   {
     value: 'INSTANT',
     label: '5,99% + IVA',
-    description: 'Acreditación inmediata de Mercado Pago. El checkout también suma 1% de Plura.',
+    description: 'Acreditación inmediata de Mercado Pago. El cobro online también suma 1% de Plura.',
   },
   {
     value: 'DELAYED_21_DAYS',
     label: '4,99% + IVA',
-    description: 'Acreditación a 21 días de Mercado Pago. El checkout también suma 1% de Plura.',
+    description: 'Acreditación a 21 días de Mercado Pago. El cobro online también suma 1% de Plura.',
   },
 ];
 
@@ -353,7 +353,7 @@ export default function ProfesionalServicesBuilderPage() {
 
     if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
       setSaveMessage(
-        'Los cobros online todavia no estan disponibles para esta cuenta. Cambia la modalidad a pago en el local.',
+        'Los cobros online todavía no están disponibles para esta cuenta. Cambiá la modalidad a pago en el local.',
       );
       setSaveError(true);
       return false;
@@ -511,6 +511,10 @@ export default function ProfesionalServicesBuilderPage() {
     () => services.filter((service) => Boolean(service.imageUrl)).length,
     [services],
   );
+  const onlinePaymentServiceCount = useMemo(
+    () => services.filter((service) => normalizePaymentType(service.paymentType) !== 'ON_SITE').length,
+    [services],
+  );
   const serviceCapacityLabel = maxServices >= PRACTICAL_UNLIMITED ? 'Ilimitados' : `${serviceCount}/${maxServices}`;
   const hasReachedServiceLimit = !editingId && services.length >= maxServices;
   const requiresFirstServiceVerification =
@@ -611,9 +615,9 @@ export default function ProfesionalServicesBuilderPage() {
     <ProfessionalDashboardShell profile={profile} active="Servicios">
       <div className="space-y-6">
                 <DashboardPageHeader
-                  eyebrow="Oferta comercial"
+                  eyebrow="OFERTA"
                   title="Servicios"
-                  description="Separá catálogo y editor para actualizar la oferta con más jerarquía visual."
+                  description="Definí qué ofrecés, cuánto dura y cómo se reserva."
                   meta={
                     <>
                       <DashboardHeaderBadge tone="success">
@@ -630,14 +634,19 @@ export default function ProfesionalServicesBuilderPage() {
                     </>
                   }
                   actions={(
-                    <Button
-                      type="button"
-                      variant="primary"
-                      onClick={() => void loadServices()}
-                      disabled={isLoadingServices}
-                    >
-                      {isLoadingServices ? 'Actualizando...' : 'Actualizar lista'}
-                    </Button>
+                    <>
+                      <Button type="button" variant="primary" onClick={resetDraft}>
+                        Crear servicio
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void loadServices()}
+                        disabled={isLoadingServices}
+                      >
+                        {isLoadingServices ? 'Actualizando...' : 'Actualizar lista'}
+                      </Button>
+                    </>
                   )}
                 />
 
@@ -662,11 +671,11 @@ export default function ProfesionalServicesBuilderPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                       <DashboardStatCard
                         label="Servicios"
                         value={serviceCapacityLabel}
-                        detail={maxServices >= PRACTICAL_UNLIMITED ? 'Capacidad sin tope operativo' : 'Cargados sobre el límite del plan'}
+                        detail={maxServices >= PRACTICAL_UNLIMITED ? 'Servicios disponibles' : 'Cargados sobre el límite del plan'}
                         icon="servicios"
                         tone="warm"
                       />
@@ -678,11 +687,19 @@ export default function ProfesionalServicesBuilderPage() {
                         tone="accent"
                       />
                       <DashboardStatCard
-                        label="Con imagen"
+                        label="Con foto"
                         value={`${servicesWithImageCount}`}
-                        detail="Piezas visuales listas para publicar"
+                        detail="Servicios con foto"
                         icon="publica"
                       />
+                      {canUseOnlinePayments ? (
+                        <DashboardStatCard
+                          label="Cobro online"
+                          value={`${onlinePaymentServiceCount}`}
+                          detail="Servicios con seña o prepago"
+                          icon="plan"
+                        />
+                      ) : null}
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-[1.08fr,0.92fr]">
@@ -756,7 +773,7 @@ export default function ProfesionalServicesBuilderPage() {
                                     </p>
                                     {normalizePaymentType(service.paymentType) !== 'ON_SITE' ? (
                                       <p className="mt-1 text-[0.72rem] text-[#64748B]">
-                                        Checkout: {formatProcessingFeeModeLabel(service.processingFeeMode)}
+                                        Cobro online: {formatProcessingFeeModeLabel(service.processingFeeMode)}
                                       </p>
                                     ) : null}
                                     {service.description ? (
@@ -803,7 +820,7 @@ export default function ProfesionalServicesBuilderPage() {
                         <DashboardSectionHeading
                           eyebrow={editingId ? 'Edición' : 'Alta'}
                           title={editingId ? 'Actualizar servicio' : 'Crear servicio'}
-                          description="Usá esta ficha para completar precio, duración, imagen y buffer operativo."
+                          description="Usá esta ficha para completar precio, duración, imagen y tiempo extra entre turnos."
                         />
                         {!editingId && maxServices < PRACTICAL_UNLIMITED ? (
                           <p className={`mt-4 rounded-[16px] border px-3 py-2 text-xs ${
@@ -1010,7 +1027,7 @@ export default function ProfesionalServicesBuilderPage() {
                                     onClick={() => {
                                       if (isLockedOption) {
                                         setSaveMessage(
-                                          'Los cobros online todavia no estan disponibles para esta cuenta.',
+                                          'Los cobros online todavía no están disponibles para esta cuenta.',
                                         );
                                         setSaveError(true);
                                         return;
@@ -1051,7 +1068,7 @@ export default function ProfesionalServicesBuilderPage() {
                             </div>
                             {!canUseOnlinePayments ? (
                               <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
-                                La seña online y el prepago total todavia no estan disponibles para esta cuenta.
+                                La seña online y el prepago total todavía no están disponibles para esta cuenta.
                               </p>
                             ) : null}
                           </div>

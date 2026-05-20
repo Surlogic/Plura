@@ -106,7 +106,7 @@ function ProfessionalNotificationsList({
             No pudimos cargar el centro de notificaciones.
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700/90">
-            Probá actualizar para volver a consultar el inbox profesional.
+            Probá actualizar para volver a consultar el historial profesional.
           </p>
           <div className="mt-4">
             <Button type="button" size="sm" variant="secondary" onClick={onRetry}>
@@ -150,7 +150,7 @@ function ProfessionalNotificationsList({
             onClick={onLoadMore}
             disabled={isLoadingMore}
           >
-            {isLoadingMore ? 'Cargando...' : 'Cargar mas notificaciones'}
+            {isLoadingMore ? 'Cargando...' : 'Cargar más notificaciones'}
           </Button>
         </div>
       ) : null}

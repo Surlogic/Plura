@@ -69,15 +69,34 @@ BEGIN
     END LOOP;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.immutable_unaccent(value text)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-SET search_path = pg_catalog, public
-AS $$
-  SELECT public.unaccent('public.unaccent'::regdictionary, COALESCE(value, ''));
-$$;
+DO $plura_unaccent$
+DECLARE
+    unaccent_schema text;
+BEGIN
+    SELECT n.nspname
+    INTO unaccent_schema
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE e.extname = 'unaccent'
+    LIMIT 1;
+
+    IF unaccent_schema IS NULL THEN
+        RAISE EXCEPTION 'Extension unaccent is required';
+    END IF;
+
+    EXECUTE format($function$
+        CREATE OR REPLACE FUNCTION public.immutable_unaccent(value text)
+        RETURNS text
+        LANGUAGE sql
+        IMMUTABLE
+        PARALLEL SAFE
+        SET search_path = pg_catalog, public, extensions
+        AS $body$
+          SELECT %1$I.unaccent(%2$L::regdictionary, COALESCE(value, ''));
+        $body$;
+    $function$, unaccent_schema, unaccent_schema || '.unaccent');
+END;
+$plura_unaccent$;
 
 CREATE OR REPLACE FUNCTION public.sync_prof_display_name_from_user()
 RETURNS trigger

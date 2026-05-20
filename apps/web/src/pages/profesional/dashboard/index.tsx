@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
@@ -112,6 +112,7 @@ const calendarLabelStepMinutes = 60;
 const calendarMarginMinutes = 30;
 const minCalendarSpanMinutes = 3 * 60;
 const hourRowHeight = 56;
+const weekCalendarGridTemplateColumns = '64px repeat(7, minmax(0, 1fr))';
 const formatMinutesLabel = (minutes: number) => {
   const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60) % 24;
@@ -430,105 +431,121 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   return (
     <div className="overflow-x-auto [scrollbar-width:thin]">
       <div className="min-w-[820px] bg-white lg:min-w-0">
-        <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] bg-[#F8FAFC]">
-          <div className="px-2 py-2" aria-hidden="true" />
-          {weekDays.map((day) => {
-            const isToday = day.dateKey === todayKey;
-            return (
-              <div
-                key={day.dateKey}
-                className={`border-l border-[#EDF2F7] px-2 py-2 text-center ${isToday ? 'bg-[#F0FDFA]' : ''}`}
-              >
-                <p className={`text-xs font-medium sm:text-sm ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
-                  {dayLabelsShort[day.dayKey]} {day.dayNumber}
-                </p>
-              </div>
-            );
-          })}
+        <div className="overflow-y-auto border-b border-[#EDF2F7] bg-[#F8FAFC] [scrollbar-gutter:stable] [scrollbar-width:thin]">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: weekCalendarGridTemplateColumns }}
+          >
+            <div className="px-2 py-2" aria-hidden="true" />
+            {weekDays.map((day) => {
+              const isToday = day.dateKey === todayKey;
+              return (
+                <div
+                  key={day.dateKey}
+                  className={`border-l border-[#EDF2F7] px-2 py-2 text-center ${isToday ? 'bg-[#F0FDFA]' : ''}`}
+                >
+                  <p className={`text-xs font-medium sm:text-sm ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                    {dayLabelsShort[day.dayKey]} {day.dayNumber}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div
           ref={scrollContainerRef}
-          className="relative min-h-[390px] max-h-[520px] overflow-y-auto overscroll-contain scroll-smooth [scrollbar-width:thin] lg:max-h-[calc(100vh-276px)]"
+          className="relative min-h-[390px] max-h-[520px] overflow-y-auto overscroll-contain scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] lg:max-h-[calc(100vh-276px)]"
         >
-          {hourMarkers.map((hourStartMinutes) => (
-            <div
-              key={hourStartMinutes}
-              className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] last:border-b-0"
-            >
-              <div className="min-h-[56px] bg-[#F8FAFC]/70 px-2 py-2 text-right text-[0.7rem] text-[#94A3B8]">
-                {formatMinutesLabel(hourStartMinutes)}
-              </div>
-              {weekDays.map((day, index) => {
-                const isToday = day.dateKey === todayKey;
-                const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FCFDFE]';
-                const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
-                const reservationsInHour = dayLayouts.filter(
-                  (layout) =>
-                    layout.startMinutes >= hourStartMinutes
-                    && layout.startMinutes < hourStartMinutes + calendarLabelStepMinutes,
-                );
-                const showNowLine = currentTimeIndicator?.dateKey === day.dateKey
-                  && currentIndicatorMinutes !== null
-                  && currentIndicatorMinutes >= hourStartMinutes
-                  && currentIndicatorMinutes < hourStartMinutes + calendarLabelStepMinutes;
-                const nowLineTop = currentIndicatorMinutes === null
-                  ? 0
-                  : ((currentIndicatorMinutes - hourStartMinutes) / calendarLabelStepMinutes) * hourRowHeight;
+          <div
+            className="grid"
+            style={{
+              gridAutoRows: `minmax(${hourRowHeight}px, auto)`,
+              gridTemplateColumns: weekCalendarGridTemplateColumns,
+            }}
+          >
+            {hourMarkers.map((hourStartMinutes, rowIndex) => (
+              <Fragment key={hourStartMinutes}>
+                <div
+                  className={`bg-[#F8FAFC]/70 px-2 py-2 text-right text-[0.7rem] text-[#94A3B8] ${
+                    rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
+                  }`}
+                >
+                  {formatMinutesLabel(hourStartMinutes)}
+                </div>
+                {weekDays.map((day, index) => {
+                  const isToday = day.dateKey === todayKey;
+                  const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FCFDFE]';
+                  const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
+                  const reservationsInHour = dayLayouts.filter(
+                    (layout) =>
+                      layout.startMinutes >= hourStartMinutes
+                      && layout.startMinutes < hourStartMinutes + calendarLabelStepMinutes,
+                  );
+                  const showNowLine = currentTimeIndicator?.dateKey === day.dateKey
+                    && currentIndicatorMinutes !== null
+                    && currentIndicatorMinutes >= hourStartMinutes
+                    && currentIndicatorMinutes < hourStartMinutes + calendarLabelStepMinutes;
+                  const nowLineTop = currentIndicatorMinutes === null
+                    ? 0
+                    : ((currentIndicatorMinutes - hourStartMinutes) / calendarLabelStepMinutes) * hourRowHeight;
 
-                return (
-                  <div
-                    key={`${day.dateKey}-${hourStartMinutes}`}
-                    className={`relative min-h-[56px] border-l border-[#EDF2F7] p-1 ${
-                      isToday ? 'bg-[#F0FDFA]' : baseBackground
-                    }`}
-                  >
-                    {showNowLine ? (
-                      <div
-                        className="pointer-events-none absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
-                        style={{ top: nowLineTop }}
-                      />
-                    ) : null}
-                    <div className="relative z-[2] space-y-1">
-                      {reservationsInHour.map((layout) => {
-                        const palette = getReservationStatusPalette(layout.reservation.status);
-                        const statusTextClassName = layout.reservation.status === 'pending'
-                          ? 'text-[#92400E]'
-                          : layout.reservation.status === 'cancelled'
-                            ? 'text-[#B91C1C]'
-                            : layout.reservation.status === 'completed'
-                              ? 'text-[#475569]'
-                              : layout.reservation.status === 'no_show'
-                                ? 'text-[#6D28D9]'
-                                : 'text-[#0F766E]';
+                  return (
+                    <div
+                      key={`${day.dateKey}-${hourStartMinutes}`}
+                      className={`relative border-l border-[#EDF2F7] p-1 ${
+                        rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
+                      } ${
+                        isToday ? 'bg-[#F0FDFA]' : baseBackground
+                      }`}
+                    >
+                      {showNowLine ? (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
+                          style={{ top: nowLineTop }}
+                        />
+                      ) : null}
+                      <div className="relative z-[2] space-y-1">
+                        {reservationsInHour.map((layout) => {
+                          const palette = getReservationStatusPalette(layout.reservation.status);
+                          const statusTextClassName = layout.reservation.status === 'pending'
+                            ? 'text-[#92400E]'
+                            : layout.reservation.status === 'cancelled'
+                              ? 'text-[#B91C1C]'
+                              : layout.reservation.status === 'completed'
+                                ? 'text-[#475569]'
+                                : layout.reservation.status === 'no_show'
+                                  ? 'text-[#6D28D9]'
+                                  : 'text-[#0F766E]';
 
-                        return (
-                          <button
-                            type="button"
-                            key={layout.reservation.id}
-                            onClick={() => onReservationOpen(layout.reservation)}
-                            className={`w-full rounded-md border px-2 py-1.5 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
-                          >
-                            <p className="text-xs font-semibold leading-none text-[#0F172A]">
-                              {layout.reservation.time || '--:--'}
-                            </p>
-                            <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
-                              {layout.reservation.serviceName || 'Servicio'}
-                            </p>
-                            {layout.reservation.clientName ? (
-                              <p className="mt-0.5 truncate text-xs text-[#64748B]">
-                                {layout.reservation.clientName}
+                          return (
+                            <button
+                              type="button"
+                              key={layout.reservation.id}
+                              onClick={() => onReservationOpen(layout.reservation)}
+                              className={`w-full rounded-md border px-2 py-1.5 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
+                            >
+                              <p className="text-xs font-semibold leading-none text-[#0F172A]">
+                                {layout.reservation.time || '--:--'}
                               </p>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                              <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
+                                {layout.reservation.serviceName || 'Servicio'}
+                              </p>
+                              {layout.reservation.clientName ? (
+                                <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                                  {layout.reservation.clientName}
+                                </p>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                  );
+                })}
+              </Fragment>
+            ))}
+          </div>
         </div>
       </div>
     </div>

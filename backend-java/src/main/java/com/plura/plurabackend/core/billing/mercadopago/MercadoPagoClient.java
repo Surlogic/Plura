@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -103,23 +104,85 @@ public class MercadoPagoClient {
         String payerEmail,
         String preapprovalPlanId
     ) {
-        String path = buildPreapprovalSearchPath(externalReference, payerEmail, preapprovalPlanId);
-        JsonNode response = sendRequest(
+        String path = buildPreapprovalSearchPath(
+            externalReference,
+            externalReference == null || externalReference.isBlank() ? payerEmail : null,
+            preapprovalPlanId
+        );
+        JsonNode response = sendSearchRequest(path);
+        JsonNode results = response.path("results");
+        Optional<MercadoPagoPreapproval> strictMatch =
+            findStrictPreapprovalMatch(results, externalReference, payerEmail, preapprovalPlanId);
+        if (strictMatch.isPresent()) {
+            return strictMatch;
+        }
+
+        if ((payerEmail == null || payerEmail.isBlank()) && (preapprovalPlanId == null || preapprovalPlanId.isBlank())) {
+            return Optional.empty();
+        }
+
+        JsonNode fallbackResults = sendSearchRequest(buildPreapprovalSearchPath(null, payerEmail, preapprovalPlanId))
+            .path("results");
+        strictMatch = findStrictPreapprovalMatch(fallbackResults, externalReference, payerEmail, preapprovalPlanId);
+        return strictMatch.or(() -> findUniqueConfirmedEmailPlanMatch(fallbackResults, payerEmail, preapprovalPlanId));
+    }
+
+    private JsonNode sendSearchRequest(String path) {
+        return sendRequest(
             HttpMethod.GET,
             path,
             null,
             "No se pudo buscar la suscripcion en Mercado Pago"
         );
-        JsonNode results = response.path("results");
+    }
+
+    private Optional<MercadoPagoPreapproval> findStrictPreapprovalMatch(
+        JsonNode results,
+        String externalReference,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
         if (!results.isArray()) {
             return Optional.empty();
         }
+        MercadoPagoPreapproval bestMatch = null;
+        OffsetDateTime bestDate = null;
         for (JsonNode result : results) {
-            if (matchesPreapprovalSearchResult(result, externalReference, payerEmail, preapprovalPlanId)) {
-                return Optional.of(toPreapproval(result, false));
+            if (!matchesPreapprovalSearchResult(result, externalReference, payerEmail, preapprovalPlanId)) {
+                continue;
+            }
+            OffsetDateTime candidateDate = parseOffsetDateTime(firstNonBlank(
+                textValue(result, "last_modified"),
+                textValue(result, "date_created")
+            ));
+            if (bestMatch == null || isAfter(candidateDate, bestDate)) {
+                bestMatch = toPreapproval(result, false);
+                bestDate = candidateDate;
             }
         }
-        return Optional.empty();
+        return Optional.ofNullable(bestMatch);
+    }
+
+    private Optional<MercadoPagoPreapproval> findUniqueConfirmedEmailPlanMatch(
+        JsonNode results,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
+        if (!results.isArray()) {
+            return Optional.empty();
+        }
+        MercadoPagoPreapproval match = null;
+        for (JsonNode result : results) {
+            if (!matchesEmailAndPlan(result, payerEmail, preapprovalPlanId)
+                || !isConfirmedPreapprovalStatus(textValue(result, "status"))) {
+                continue;
+            }
+            if (match != null) {
+                return Optional.empty();
+            }
+            match = toPreapproval(result, false);
+        }
+        return Optional.ofNullable(match);
     }
 
     /**
@@ -237,6 +300,18 @@ public class MercadoPagoClient {
         boolean referenceMatches = externalReference == null
             || externalReference.isBlank()
             || externalReference.equals(textValue(result, "external_reference"));
+        boolean canIgnoreEmail = externalReference != null
+            && !externalReference.isBlank()
+            && externalReference.equals(textValue(result, "external_reference"));
+        return referenceMatches && matchesEmailAndPlan(result, canIgnoreEmail ? null : payerEmail, preapprovalPlanId)
+            && textValue(result, "id") != null;
+    }
+
+    private boolean matchesEmailAndPlan(
+        JsonNode result,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
         boolean emailMatches = payerEmail == null
             || payerEmail.isBlank()
             || payerEmail.equalsIgnoreCase(firstNonBlank(
@@ -246,7 +321,36 @@ public class MercadoPagoClient {
         boolean planMatches = preapprovalPlanId == null
             || preapprovalPlanId.isBlank()
             || preapprovalPlanId.equals(textValue(result, "preapproval_plan_id"));
-        return referenceMatches && emailMatches && planMatches && textValue(result, "id") != null;
+        return emailMatches && planMatches && textValue(result, "id") != null;
+    }
+
+    private boolean isConfirmedPreapprovalStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return false;
+        }
+        String status = rawStatus.trim().toLowerCase();
+        return "authorized".equals(status)
+            || "active".equals(status)
+            || "trial".equals(status)
+            || "trialing".equals(status);
+    }
+
+    private boolean isAfter(OffsetDateTime candidateDate, OffsetDateTime currentDate) {
+        if (candidateDate == null) {
+            return false;
+        }
+        return currentDate == null || candidateDate.isAfter(currentDate);
+    }
+
+    private OffsetDateTime parseOffsetDateTime(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+        try {
+            return OffsetDateTime.parse(rawValue.trim());
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     /**
@@ -289,7 +393,9 @@ public class MercadoPagoClient {
             currency,
             professionalId,
             textValue(response, "payer_email"),
-            textValue(response, "reason")
+            textValue(response, "reason"),
+            textValue(response, "preapproval_plan_id"),
+            textValue(response, "external_reference")
         );
     }
 
@@ -476,6 +582,8 @@ public class MercadoPagoClient {
         String currency,
         Long professionalId,
         String payerEmail,
-        String reason
+        String reason,
+        String preapprovalPlanId,
+        String externalReference
     ) {}
 }

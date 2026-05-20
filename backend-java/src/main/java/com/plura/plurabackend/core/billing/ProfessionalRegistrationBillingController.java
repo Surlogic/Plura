@@ -32,6 +32,9 @@ public class ProfessionalRegistrationBillingController {
     public ProfessionalRegistrationCheckoutResponse verifyCheckout(
         @Valid @RequestBody ProfessionalRegistrationCheckoutVerifyRequest request
     ) {
-        return professionalRegistrationCheckoutService.verifyCheckout(request.getCheckoutToken());
+        return professionalRegistrationCheckoutService.verifyCheckout(
+            request.getCheckoutToken(),
+            request.getProviderSubscriptionId()
+        );
     }
 }

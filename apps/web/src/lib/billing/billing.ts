@@ -166,10 +166,11 @@ export const createProfessionalRegistrationCheckout = async ({
 
 export const verifyProfessionalRegistrationCheckout = async (
   checkoutToken: string,
+  providerSubscriptionId?: string | null,
 ): Promise<ProfessionalRegistrationCheckoutResponse> => {
   const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
     '/api/v1/billing/professional-registration/verify',
-    { checkoutToken },
+    { checkoutToken, providerSubscriptionId: providerSubscriptionId || undefined },
   );
   return response.data;
 };

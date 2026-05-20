@@ -176,6 +176,10 @@ type PendingProfessionalRegistrationCheckout = {
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 const PROFESSIONAL_REGISTRATION_CHECKOUT_KEY = 'plura:professional-registration-checkout';
 
+const resolveQueryValue = (value: string | string[] | undefined) => (
+  Array.isArray(value) ? value[0] || '' : value || ''
+);
+
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
   longitude: -56.1645,
@@ -366,7 +370,21 @@ export default function ProfesionalRegisterPage() {
           return;
         }
 
-        const verification = await verifyProfessionalRegistrationCheckout(pending.checkoutToken);
+        const returnedProviderSubscriptionId = [
+          router.query.preapproval_id,
+          router.query.preapprovalId,
+          router.query.providerSubscriptionId,
+          router.query.subscription_id,
+          router.query.subscriptionId,
+        ]
+          .map(resolveQueryValue)
+          .find((value) => value.trim().length > 0)
+          ?.trim();
+
+        const verification = await verifyProfessionalRegistrationCheckout(
+          pending.checkoutToken,
+          returnedProviderSubscriptionId,
+        );
         if (!verification.confirmed) {
           setErrorMessage('Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar cuando quieras.');
           return;

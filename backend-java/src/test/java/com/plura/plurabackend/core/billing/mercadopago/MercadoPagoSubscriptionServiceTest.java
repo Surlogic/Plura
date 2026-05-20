@@ -12,7 +12,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
@@ -62,7 +68,9 @@ class MercadoPagoSubscriptionServiceTest {
                 "UYU",
                 30L,
                 "pro@test.com",
-                "Plura PLAN_CORE"
+                "Plura PLAN_CORE",
+                "plan-core",
+                "subscription:30"
             ));
         MercadoPagoSubscriptionService service = new MercadoPagoSubscriptionService(properties, client);
 
@@ -121,5 +129,102 @@ class MercadoPagoSubscriptionServiceTest {
         assertTrue(session.checkoutUrl().startsWith("https://checkout.plan/start?"));
         assertTrue(session.checkoutUrl().contains("external_reference=professional-registration%3Aabc"));
         assertTrue(session.checkoutUrl().contains("payer_email=pro%40test.com"));
+    }
+
+    @Test
+    void findsConfirmedPreapprovalByEmailPlanWhenReferenceWasNotPreserved() throws Exception {
+        AtomicReference<String> firstQuery = new AtomicReference<>();
+        AtomicReference<String> secondQuery = new AtomicReference<>();
+        HttpServer server = startMercadoPagoStub(firstQuery, secondQuery);
+        try {
+            BillingProperties properties = new BillingProperties();
+            properties.getMercadopago().setEnabled(true);
+            properties.getMercadopago().setBaseUrl("http://localhost:" + server.getAddress().getPort());
+            MercadoPagoClient client = new MercadoPagoClient(properties, new ObjectMapper());
+
+            Optional<MercadoPagoClient.MercadoPagoPreapproval> found = client.findPreapprovalByReference(
+                "professional-registration:missing-reference",
+                "pro@test.com",
+                "plan-core"
+            );
+
+            assertTrue(found.isPresent());
+            assertEquals("preapproval-confirmed", found.get().id());
+            assertTrue(firstQuery.get().contains("q=professional-registration%3Amissing-reference"));
+            assertEquals("payer_email=pro%40test.com&preapproval_plan_id=plan-core", secondQuery.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void findsPreapprovalByReferenceWhenPayerEmailChangedInMercadoPago() throws Exception {
+        AtomicReference<String> firstQuery = new AtomicReference<>();
+        HttpServer server = startMercadoPagoReferenceStub(firstQuery);
+        try {
+            BillingProperties properties = new BillingProperties();
+            properties.getMercadopago().setEnabled(true);
+            properties.getMercadopago().setBaseUrl("http://localhost:" + server.getAddress().getPort());
+            MercadoPagoClient client = new MercadoPagoClient(properties, new ObjectMapper());
+
+            Optional<MercadoPagoClient.MercadoPagoPreapproval> found = client.findPreapprovalByReference(
+                "professional-registration:kept-reference",
+                "wizard@test.com",
+                "plan-core"
+            );
+
+            assertTrue(found.isPresent());
+            assertEquals("preapproval-reference", found.get().id());
+            assertEquals("mercadopago@test.com", found.get().payerEmail());
+            assertTrue(firstQuery.get().contains("q=professional-registration%3Akept-reference"));
+            assertTrue(firstQuery.get().contains("preapproval_plan_id=plan-core"));
+            assertTrue(!firstQuery.get().contains("payer_email="));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private HttpServer startMercadoPagoStub(
+        AtomicReference<String> firstQuery,
+        AtomicReference<String> secondQuery
+    ) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/preapproval/search", exchange -> {
+            String query = exchange.getRequestURI().getRawQuery();
+            String response;
+            if (firstQuery.get() == null) {
+                firstQuery.set(query);
+                response = "{\"paging\":{\"total\":0},\"results\":[]}";
+            } else {
+                secondQuery.set(query);
+                response = """
+                    {"paging":{"total":1},"results":[{"id":"preapproval-confirmed","preapproval_plan_id":"plan-core","payer_email":"pro@test.com","status":"authorized","external_reference":null,"auto_recurring":{"transaction_amount":"990","currency_id":"UYU"}}]}
+                    """;
+            }
+            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+        return server;
+    }
+
+    private HttpServer startMercadoPagoReferenceStub(
+        AtomicReference<String> firstQuery
+    ) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/preapproval/search", exchange -> {
+            firstQuery.set(exchange.getRequestURI().getRawQuery());
+            String response = """
+                {"paging":{"total":1},"results":[{"id":"preapproval-reference","preapproval_plan_id":"plan-core","payer_email":"mercadopago@test.com","status":"authorized","external_reference":"professional-registration:kept-reference","auto_recurring":{"transaction_amount":"990","currency_id":"UYU"}}]}
+                """;
+            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+        return server;
     }
 }

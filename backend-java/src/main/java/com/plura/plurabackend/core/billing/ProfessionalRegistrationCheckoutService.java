@@ -21,7 +21,7 @@ import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.Duration;
 import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
@@ -35,6 +35,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProfessionalRegistrationCheckoutService {
 
     private static final String TOKEN_TYPE = "professional_registration_checkout";
+    private static final Duration CHECKOUT_TOKEN_TTL = Duration.ofDays(7);
+    private static final Duration CHECKOUT_TOKEN_RECOVERY_LEEWAY = Duration.ofDays(30);
 
     private final BillingProperties billingProperties;
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
@@ -120,8 +122,12 @@ public class ProfessionalRegistrationCheckoutService {
     }
 
     public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken) {
+        return verifyCheckout(checkoutToken, null);
+    }
+
+    public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken, String providerSubscriptionId) {
         CheckoutToken token = verifyCheckoutToken(checkoutToken);
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token);
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token, providerSubscriptionId);
         String status = snapshot == null ? "" : normalizeStatus(snapshot.status());
         boolean confirmed = isConfirmedSubscriptionStatus(status) && hasText(snapshot.providerSubscriptionId());
         String responseToken = confirmed && !hasText(token.providerSubscriptionId())
@@ -263,7 +269,7 @@ public class ProfessionalRegistrationCheckoutService {
             .withClaim("provider", "MERCADOPAGO")
             .withClaim("planCode", plan.canonicalCode())
             .withIssuedAt(new Date())
-            .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)));
+            .withExpiresAt(Date.from(Instant.now().plus(CHECKOUT_TOKEN_TTL)));
         if (hasText(providerSubscriptionId)) {
             tokenBuilder.withClaim("providerSubscriptionId", providerSubscriptionId.trim());
         }
@@ -284,6 +290,7 @@ public class ProfessionalRegistrationCheckoutService {
             JWTVerifier verifier = JWT.require(tokenAlgorithm)
                 .withIssuer(jwtIssuer)
                 .withClaim("typ", TOKEN_TYPE)
+                .acceptExpiresAt(CHECKOUT_TOKEN_RECOVERY_LEEWAY.toSeconds())
                 .build();
             DecodedJWT decoded = verifier.verify(rawToken);
             String providerSubscriptionId = decoded.getClaim("providerSubscriptionId").asString();
@@ -307,7 +314,7 @@ public class ProfessionalRegistrationCheckoutService {
     }
 
     private MercadoPagoSubscriptionService.SubscriptionSnapshot requireConfirmedSnapshot(CheckoutToken token) {
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token);
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token, null);
         if (snapshot == null
             || !hasText(snapshot.providerSubscriptionId())
             || !isConfirmedSubscriptionStatus(normalizeStatus(snapshot.status()))) {
@@ -316,7 +323,20 @@ public class ProfessionalRegistrationCheckoutService {
         return snapshot;
     }
 
-    private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveCheckoutSnapshot(CheckoutToken token) {
+    private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveCheckoutSnapshot(
+        CheckoutToken token,
+        String explicitProviderSubscriptionId
+    ) {
+        String explicitId = normalizeOptionalText(explicitProviderSubscriptionId);
+        if (hasText(explicitId)) {
+            if (hasText(token.providerSubscriptionId()) && !explicitId.equals(token.providerSubscriptionId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "providerSubscriptionId no coincide con el checkout");
+            }
+            MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
+                mercadoPagoSubscriptionService.getSubscription(explicitId);
+            ensureSnapshotCompatibleWithCheckout(token, snapshot);
+            return snapshot;
+        }
         if (hasText(token.providerSubscriptionId())) {
             return mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
         }
@@ -330,6 +350,25 @@ public class ProfessionalRegistrationCheckoutService {
                 token.preapprovalPlanId()
             )
             .orElse(null);
+    }
+
+    private void ensureSnapshotCompatibleWithCheckout(
+        CheckoutToken token,
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot
+    ) {
+        if (snapshot == null || !hasText(snapshot.providerSubscriptionId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavÃ­a no confirmÃ³ la suscripciÃ³n");
+        }
+        if (hasText(token.registrationReference())
+            && hasText(snapshot.externalReference())
+            && !token.registrationReference().equals(snapshot.externalReference())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripciÃ³n no pertenece a este checkout");
+        }
+        if (hasText(token.preapprovalPlanId())
+            && hasText(snapshot.preapprovalPlanId())
+            && !token.preapprovalPlanId().equals(snapshot.preapprovalPlanId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripciÃ³n no pertenece al plan confirmado");
+        }
     }
 
     private boolean isConfirmedSubscriptionStatus(String status) {
@@ -378,6 +417,10 @@ public class ProfessionalRegistrationCheckoutService {
 
     private String normalizeStatus(String rawStatus) {
         return rawStatus == null ? "" : rawStatus.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeOptionalText(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private boolean hasText(String value) {

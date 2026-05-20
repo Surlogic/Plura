@@ -123,7 +123,9 @@ public class MercadoPagoSubscriptionService {
             preapproval.currency(),
             preapproval.professionalId(),
             preapproval.payerEmail(),
-            preapproval.reason()
+            preapproval.reason(),
+            preapproval.preapprovalPlanId(),
+            preapproval.externalReference()
         );
     }
 
@@ -323,7 +325,9 @@ public class MercadoPagoSubscriptionService {
         String currency,
         Long professionalId,
         String payerEmail,
-        String reason
+        String reason,
+        String preapprovalPlanId,
+        String externalReference
     ) {}
 
     /**

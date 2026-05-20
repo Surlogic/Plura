@@ -172,16 +172,21 @@ function ProfesionalSidebar({
       ref={rootRef}
       className="relative flex min-h-full flex-col overflow-x-hidden border-r border-[#E2E8F0] bg-white text-[#0F172A] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className={cn('border-b border-[#E2E8F0] py-4', collapsed ? 'px-2' : 'px-4')}>
-        <div className={cn('rounded-xl border border-[#E2E8F0] bg-white', collapsed ? 'p-2' : 'p-3')}>
+      <div className={cn('border-b border-[#E2E8F0] py-4', collapsed ? 'px-0' : 'px-4')}>
+        <div className={cn(collapsed ? 'flex justify-center' : 'rounded-xl border border-[#E2E8F0] bg-white p-3')}>
           <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'mb-2')}>
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#ECFDF5] text-xs font-semibold text-[#0F766E]">
+            <div
+              className={cn(
+                'relative flex shrink-0 items-center justify-center overflow-hidden bg-[#ECFDF5] text-xs font-semibold text-[#0F766E]',
+                collapsed ? 'h-11 w-11 rounded-xl shadow-[inset_0_0_0_1px_#D1FAE5]' : 'h-10 w-10 rounded-lg',
+              )}
+            >
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
                 alt={`Logo de ${displayName}`}
                 fill
-                sizes="40px"
+                sizes={collapsed ? '44px' : '40px'}
                 className="object-cover"
                 style={buildProfessionalMediaStyle(profile?.logoMedia)}
               />
@@ -200,13 +205,16 @@ function ProfesionalSidebar({
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
-        {menuSections.map((section) => (
-          <div key={section.label} className={cn('mb-6', collapsed && 'mb-4')}>
+      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-3 py-3' : 'px-3 py-4')}>
+        {menuSections.map((section, sectionIndex) => (
+          <div key={section.label} className={cn(collapsed ? 'mb-3' : 'mb-6')}>
+            {collapsed && sectionIndex > 0 ? (
+              <div className="mx-auto mb-3 h-px w-8 bg-[#E2E8F0]" />
+            ) : null}
             <p className={cn('mb-2 px-3 text-xs uppercase tracking-wider text-[#64748B]', collapsed && 'sr-only')}>
               {section.label}
             </p>
-            <div className="space-y-1">
+            <div className={cn(collapsed ? 'space-y-2' : 'space-y-1')}>
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const showsFeatureHint = item.featureKey
@@ -214,10 +222,10 @@ function ProfesionalSidebar({
                   : false;
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
-                  'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  collapsed && 'justify-center gap-0 px-2',
+                  'group relative flex items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
                   isActive && !isDisabled
-                    ? 'bg-[#ECFDF5] text-[#0F766E]'
+                    ? cn('bg-[#ECFDF5] text-[#0F766E]', collapsed && 'shadow-[inset_3px_0_0_#0F766E]')
                     : isDisabled
                       ? 'cursor-not-allowed bg-transparent text-[color:var(--ink-faint)]'
                       : 'bg-transparent text-[#0F172A] hover:bg-[#ECFDF5]/50',
@@ -225,12 +233,13 @@ function ProfesionalSidebar({
 
                 const content = (
                   <>
-                    {isActive && !isDisabled ? (
+                    {isActive && !isDisabled && !collapsed ? (
                       <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-[#0F766E]" />
                     ) : null}
                     <span
                       className={cn(
-                        'inline-flex h-4 w-4 shrink-0 items-center justify-center',
+                        'inline-flex shrink-0 items-center justify-center',
+                        collapsed ? 'h-5 w-5' : 'h-4 w-4',
                         isActive && !isDisabled
                           ? 'text-[#0F766E]'
                           : isDisabled
@@ -238,7 +247,7 @@ function ProfesionalSidebar({
                             : 'bg-transparent text-[#0F172A]',
                       )}
                     >
-                      <DashboardIcon name={item.icon} className="h-4 w-4" />
+                      <DashboardIcon name={item.icon} className={collapsed ? 'h-[18px] w-[18px]' : 'h-4 w-4'} />
                     </span>
                     <span
                       className={cn(
@@ -303,15 +312,16 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto border-t border-[#E2E8F0] py-4', collapsed ? 'px-2' : 'px-3')}>
-        <div className="space-y-1">
+      <div className={cn('mt-auto py-4', collapsed ? 'px-3' : 'border-t border-[#E2E8F0] px-3')}>
+        {collapsed ? <div className="mx-auto mb-3 h-px w-8 bg-[#E2E8F0]" /> : null}
+        <div className={cn(collapsed ? 'space-y-2' : 'space-y-1')}>
           {onToggleCollapsed ? (
             <button
               type="button"
               onClick={onToggleCollapsed}
               className={cn(
-                'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                collapsed && 'justify-center gap-0 px-2',
+                'group relative flex items-center bg-transparent text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
               )}
               aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
               aria-pressed={collapsed}
@@ -333,8 +343,8 @@ function ProfesionalSidebar({
             <button
               type="button"
               className={cn(
-                'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-                collapsed && 'justify-center gap-0 px-2',
+                'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
               )}
               onClick={handleEnterAsClient}
               disabled={isSwitchingContext}
@@ -354,8 +364,8 @@ function ProfesionalSidebar({
             onClick={() => void logout('PROFESSIONAL')}
             disabled={isLoggingOut}
             className={cn(
-              'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-              collapsed && 'justify-center gap-0 px-2',
+              'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
+              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
             )}
             title={collapsed ? 'Cerrar sesión' : undefined}
           >

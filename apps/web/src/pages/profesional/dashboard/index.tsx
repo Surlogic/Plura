@@ -111,7 +111,7 @@ const calendarStepMinutes = 30;
 const calendarLabelStepMinutes = 60;
 const calendarMarginMinutes = 30;
 const minCalendarSpanMinutes = 3 * 60;
-const hourRowHeight = 68;
+const hourRowHeight = 56;
 const formatMinutesLabel = (minutes: number) => {
   const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60) % 24;
@@ -428,18 +428,18 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
     : null;
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[860px] bg-white lg:min-w-0">
-        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] bg-[#F8FAFC]">
-          <div className="p-2.5" aria-hidden="true" />
+    <div className="overflow-x-auto [scrollbar-width:thin]">
+      <div className="min-w-[820px] bg-white lg:min-w-0">
+        <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] bg-[#F8FAFC]">
+          <div className="px-2 py-2" aria-hidden="true" />
           {weekDays.map((day) => {
             const isToday = day.dateKey === todayKey;
             return (
               <div
                 key={day.dateKey}
-                className={`border-l border-[#EDF2F7] p-2.5 text-center ${isToday ? 'bg-[#ECFDF5]' : ''}`}
+                className={`border-l border-[#EDF2F7] px-2 py-2 text-center ${isToday ? 'bg-[#F0FDFA]' : ''}`}
               >
-                <p className={`text-sm font-medium ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                <p className={`text-xs font-medium sm:text-sm ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
                   {dayLabelsShort[day.dayKey]} {day.dayNumber}
                 </p>
               </div>
@@ -449,14 +449,14 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 
         <div
           ref={scrollContainerRef}
-          className="relative min-h-[430px] max-h-[560px] overflow-y-auto overscroll-contain scroll-smooth lg:max-h-[calc(100vh-292px)]"
+          className="relative min-h-[390px] max-h-[520px] overflow-y-auto overscroll-contain scroll-smooth [scrollbar-width:thin] lg:max-h-[calc(100vh-276px)]"
         >
           {hourMarkers.map((hourStartMinutes) => (
             <div
               key={hourStartMinutes}
-              className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] last:border-b-0"
+              className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] last:border-b-0"
             >
-              <div className="min-h-[68px] bg-[#F8FAFC]/70 p-2.5 pr-2 text-right text-xs text-[#94A3B8]">
+              <div className="min-h-[56px] bg-[#F8FAFC]/70 px-2 py-2 text-right text-[0.7rem] text-[#94A3B8]">
                 {formatMinutesLabel(hourStartMinutes)}
               </div>
               {weekDays.map((day, index) => {
@@ -479,7 +479,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                 return (
                   <div
                     key={`${day.dateKey}-${hourStartMinutes}`}
-                    className={`relative min-h-[68px] border-l border-[#EDF2F7] p-1 ${
+                    className={`relative min-h-[56px] border-l border-[#EDF2F7] p-1 ${
                       isToday ? 'bg-[#F0FDFA]' : baseBackground
                     }`}
                   >
@@ -507,7 +507,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                             type="button"
                             key={layout.reservation.id}
                             onClick={() => onReservationOpen(layout.reservation)}
-                            className={`w-full rounded-md border p-2 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
+                            className={`w-full rounded-md border px-2 py-1.5 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
                           >
                             <p className="text-xs font-semibold leading-none text-[#0F172A]">
                               {layout.reservation.time || '--:--'}
@@ -1195,9 +1195,9 @@ export default function ProfesionalDashboardPage() {
             ))}
           </section>
 
-          <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px] xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_300px]">
           <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div className="flex flex-col gap-3 border-b border-[#E2E8F0] bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+            <div className="flex flex-col gap-2 border-b border-[#EDF2F7] bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-[#0F172A]">
                   {calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
@@ -1207,12 +1207,12 @@ export default function ProfesionalDashboardPage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <div className="inline-flex rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1">
+              <div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
+                <div className="inline-flex rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5">
                   <button
                     type="button"
                     onClick={() => handleSetView('week')}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
                       calendarView === 'week'
                         ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.08)]'
                         : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
@@ -1224,7 +1224,7 @@ export default function ProfesionalDashboardPage() {
                     type="button"
                     onClick={() => handleSetView('month')}
                     disabled={!canUseMonthlyCalendar}
-                    className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    className={`relative rounded-md px-2.5 py-1 text-xs font-medium transition ${
                       calendarView === 'month'
                         ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.08)]'
                         : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
@@ -1234,23 +1234,23 @@ export default function ProfesionalDashboardPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1">
+                <div className="flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1">
                   <span className="text-xs text-[#64748B]">Inicia:</span>
-                  <span className="rounded-lg bg-[#0F766E] px-2 py-1 text-xs font-medium text-white">
+                  <span className="rounded-md bg-[#0F766E] px-1.5 py-0.5 text-[0.7rem] font-medium text-white">
                     Lun
                   </span>
-                  <span className="rounded-lg px-2 py-1 text-xs font-medium text-[#64748B]">
+                  <span className="rounded-md px-1.5 py-0.5 text-[0.7rem] font-medium text-[#64748B]">
                     Dom
                   </span>
                 </div>
 
-                <div className="flex items-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+                <div className="flex items-center overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
                   <button
                     type="button"
                     onClick={handlePrev}
                     disabled={!canNavigateCalendar}
                     aria-label="Semana anterior"
-                    className={`px-3 py-2 text-lg leading-none transition ${
+                    className={`px-2 py-1.5 text-base leading-none transition ${
                       canNavigateCalendar
                         ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
                         : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
@@ -1258,7 +1258,7 @@ export default function ProfesionalDashboardPage() {
                   >
                     ‹
                   </button>
-                  <span className="min-w-[132px] border-x border-[#E2E8F0] px-3 text-center text-sm text-[#64748B]">
+                  <span className="min-w-[120px] border-x border-[#E2E8F0] px-2 text-center text-xs text-[#64748B]">
                     {calendarView === 'week' ? calendarWeekLabel : monthLabel}
                   </span>
                   <button
@@ -1266,7 +1266,7 @@ export default function ProfesionalDashboardPage() {
                     onClick={handleNext}
                     disabled={!canNavigateCalendar}
                     aria-label="Semana siguiente"
-                    className={`px-3 py-2 text-lg leading-none transition ${
+                    className={`px-2 py-1.5 text-base leading-none transition ${
                       canNavigateCalendar
                         ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
                         : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
@@ -1299,7 +1299,7 @@ export default function ProfesionalDashboardPage() {
             )}
           </section>
 
-          <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:sticky lg:top-5 lg:self-start">
+          <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:sticky lg:top-4 lg:self-start">
             <div className="flex items-start gap-3">
               <DashboardIcon name="agenda" className="mt-0.5 h-5 w-5 text-[#0F766E]" />
               <div>

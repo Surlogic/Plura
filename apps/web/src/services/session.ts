@@ -2,14 +2,49 @@ const ACCESS_TOKEN_STORAGE_KEY = 'plura_access_token_fallback';
 const SESSION_HINT_STORAGE_KEY = 'plura_auth_session_hint';
 const SESSION_ROLE_STORAGE_KEY = 'plura_auth_session_role';
 const CONTEXT_SELECTION_PENDING_STORAGE_KEY = 'plura_auth_context_selection_pending';
+const SESSION_SYNC_STORAGE_KEY = 'plura_auth_session_sync_event';
+const SESSION_SYNC_CHANNEL_NAME = 'plura_auth_session_sync';
 
 export type KnownAuthSessionRole = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
+
+type AuthSessionChangeReason = 'login' | 'logout' | 'context' | 'pending' | 'session';
+
+export type AuthSessionSnapshot = {
+  accessToken: string | null;
+  hasSessionHint: boolean;
+  role: KnownAuthSessionRole | null;
+  contextSelectionPending: boolean;
+};
+
+export type AuthSessionChangeEvent = {
+  reason: AuthSessionChangeReason;
+  snapshot: AuthSessionSnapshot;
+};
+
+type AuthSessionSyncMessage = AuthSessionChangeEvent & {
+  sourceId: string;
+  version: number;
+};
+
+type AuthSessionChangeListener = (event: AuthSessionChangeEvent) => void;
 
 let inMemoryAccessToken: string | null = null;
 let inMemorySessionHint: boolean | null = null;
 let inMemorySessionRole: KnownAuthSessionRole | null | undefined;
 let inMemoryContextSelectionPending: boolean | null = null;
 const ACCESS_TOKEN_EXPIRY_SKEW_MS = 30_000;
+const TAB_ID = Math.random().toString(36).slice(2);
+const sessionChangeListeners = new Set<AuthSessionChangeListener>();
+const WATCHED_SESSION_STORAGE_KEYS = new Set([
+  ACCESS_TOKEN_STORAGE_KEY,
+  SESSION_HINT_STORAGE_KEY,
+  SESSION_ROLE_STORAGE_KEY,
+  CONTEXT_SELECTION_PENDING_STORAGE_KEY,
+]);
+
+let sessionSyncListenersReady = false;
+let sessionSyncBroadcastChannel: BroadcastChannel | null = null;
+let pendingStorageSnapshotSync: ReturnType<typeof setTimeout> | null = null;
 
 const normalizeToken = (token?: string | null) => {
   if (typeof token !== 'string') return null;
@@ -68,6 +103,164 @@ const isAccessTokenExpired = (token?: string | null) => {
     return false;
   }
   return payload.exp * 1000 <= Date.now() + ACCESS_TOKEN_EXPIRY_SKEW_MS;
+};
+
+const readAuthSessionSnapshotFromStorage = (): AuthSessionSnapshot => {
+  if (typeof window === 'undefined') {
+    return {
+      accessToken: inMemoryAccessToken,
+      hasSessionHint: Boolean(inMemorySessionHint),
+      role: typeof inMemorySessionRole === 'undefined' ? null : inMemorySessionRole,
+      contextSelectionPending: Boolean(inMemoryContextSelectionPending),
+    };
+  }
+
+  const accessToken = normalizeToken(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY));
+  const contextSelectionPending =
+    window.localStorage.getItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY) === '1';
+  const storedRole = normalizeSessionRole(window.localStorage.getItem(SESSION_ROLE_STORAGE_KEY));
+  const role = contextSelectionPending ? null : storedRole ?? roleFromAccessToken(accessToken);
+  const hasSessionHint =
+    window.localStorage.getItem(SESSION_HINT_STORAGE_KEY) === '1' ||
+    Boolean(accessToken) ||
+    Boolean(role) ||
+    contextSelectionPending;
+
+  return {
+    accessToken,
+    hasSessionHint,
+    role,
+    contextSelectionPending,
+  };
+};
+
+const applyAuthSessionSnapshotToMemory = (snapshot: AuthSessionSnapshot) => {
+  inMemoryAccessToken = snapshot.accessToken;
+  inMemorySessionHint = snapshot.hasSessionHint;
+  inMemorySessionRole = snapshot.contextSelectionPending ? null : snapshot.role;
+  inMemoryContextSelectionPending = snapshot.contextSelectionPending;
+};
+
+export const getCurrentAuthSessionSnapshot = (): AuthSessionSnapshot => {
+  const snapshot = readAuthSessionSnapshotFromStorage();
+  applyAuthSessionSnapshotToMemory(snapshot);
+  return snapshot;
+};
+
+const notifyAuthSessionListeners = (event: AuthSessionChangeEvent) => {
+  sessionChangeListeners.forEach((listener) => {
+    listener(event);
+  });
+};
+
+const getSessionSyncBroadcastChannel = () => {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.BroadcastChannel !== 'function'
+  ) {
+    return null;
+  }
+  if (!sessionSyncBroadcastChannel) {
+    sessionSyncBroadcastChannel = new window.BroadcastChannel(SESSION_SYNC_CHANNEL_NAME);
+  }
+  return sessionSyncBroadcastChannel;
+};
+
+const emitAuthSessionChange = (reason: AuthSessionChangeReason) => {
+  if (typeof window === 'undefined') return;
+  const snapshot = getCurrentAuthSessionSnapshot();
+  const message: AuthSessionSyncMessage = {
+    reason,
+    snapshot,
+    sourceId: TAB_ID,
+    version: Date.now(),
+  };
+
+  notifyAuthSessionListeners({ reason, snapshot });
+
+  try {
+    getSessionSyncBroadcastChannel()?.postMessage(message);
+  } catch {
+    // BroadcastChannel es optimización; localStorage mantiene el fallback.
+  }
+
+  try {
+    window.localStorage.setItem(SESSION_SYNC_STORAGE_KEY, JSON.stringify(message));
+  } catch {
+    // Si localStorage falla, la pestaña actual ya fue notificada.
+  }
+};
+
+const isAuthSessionSyncMessage = (value: unknown): value is AuthSessionSyncMessage => {
+  if (!value || typeof value !== 'object') return false;
+  const message = value as Partial<AuthSessionSyncMessage>;
+  return (
+    typeof message.sourceId === 'string' &&
+    typeof message.version === 'number' &&
+    typeof message.reason === 'string' &&
+    Boolean(message.snapshot) &&
+    typeof message.snapshot === 'object'
+  );
+};
+
+const handleExternalAuthSessionMessage = (message: unknown) => {
+  if (!isAuthSessionSyncMessage(message) || message.sourceId === TAB_ID) return;
+  applyAuthSessionSnapshotToMemory(message.snapshot);
+  notifyAuthSessionListeners({
+    reason: message.reason,
+    snapshot: message.snapshot,
+  });
+};
+
+const syncAuthSessionSnapshotFromStorage = () => {
+  pendingStorageSnapshotSync = null;
+  const snapshot = readAuthSessionSnapshotFromStorage();
+  applyAuthSessionSnapshotToMemory(snapshot);
+  notifyAuthSessionListeners({
+    reason: snapshot.hasSessionHint ? 'session' : 'logout',
+    snapshot,
+  });
+};
+
+const scheduleAuthSessionSnapshotSyncFromStorage = () => {
+  if (pendingStorageSnapshotSync) {
+    clearTimeout(pendingStorageSnapshotSync);
+  }
+  pendingStorageSnapshotSync = setTimeout(syncAuthSessionSnapshotFromStorage, 25);
+};
+
+const ensureAuthSessionSyncListeners = () => {
+  if (sessionSyncListenersReady || typeof window === 'undefined') return;
+  sessionSyncListenersReady = true;
+
+  const broadcastChannel = getSessionSyncBroadcastChannel();
+  if (broadcastChannel) {
+    broadcastChannel.addEventListener('message', (event) => {
+      handleExternalAuthSessionMessage(event.data);
+    });
+  }
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === SESSION_SYNC_STORAGE_KEY && event.newValue) {
+      try {
+        handleExternalAuthSessionMessage(JSON.parse(event.newValue));
+      } catch {
+        scheduleAuthSessionSnapshotSyncFromStorage();
+      }
+      return;
+    }
+    if (event.key && WATCHED_SESSION_STORAGE_KEYS.has(event.key)) {
+      scheduleAuthSessionSnapshotSyncFromStorage();
+    }
+  });
+};
+
+export const subscribeAuthSessionChange = (listener: AuthSessionChangeListener) => {
+  ensureAuthSessionSyncListeners();
+  sessionChangeListeners.add(listener);
+  return () => {
+    sessionChangeListeners.delete(listener);
+  };
 };
 
 export const getAuthAccessToken = (): string | null => {
@@ -142,6 +335,7 @@ export const setAuthContextSelectionPending = (value: boolean) => {
   } else {
     window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
   }
+  emitAuthSessionChange('pending');
 };
 
 export const hasKnownAuthSession = (): boolean => {
@@ -182,6 +376,7 @@ export const setKnownAuthSession = (
   if (!value) {
     window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
   }
+  emitAuthSessionChange(value ? 'session' : 'logout');
 };
 
 export const setKnownAuthSessionRole = (role?: KnownAuthSessionRole | null) => {
@@ -198,12 +393,14 @@ export const setKnownAuthSessionRole = (role?: KnownAuthSessionRole | null) => {
   } else {
     window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
   }
+  emitAuthSessionChange(role ? 'context' : 'session');
 };
 
 export const setAuthAccessToken = (
   token?: string | null,
   role?: KnownAuthSessionRole | null,
 ) => {
+  const previousToken = inMemoryAccessToken;
   const normalized = normalizeToken(token);
   inMemoryAccessToken = normalized;
   if (normalized) {
@@ -231,6 +428,11 @@ export const setAuthAccessToken = (
       window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
     }
   }
+  if (normalized) {
+    emitAuthSessionChange(
+      role ? (previousToken && previousToken !== normalized ? 'login' : 'context') : 'session',
+    );
+  }
 };
 
 export const clearAuthAccessToken = () => {
@@ -243,4 +445,5 @@ export const clearAuthAccessToken = () => {
   window.localStorage.removeItem(SESSION_HINT_STORAGE_KEY);
   window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
   window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
+  emitAuthSessionChange('logout');
 };

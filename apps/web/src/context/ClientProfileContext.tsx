@@ -5,12 +5,16 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { AxiosRequestConfig } from 'axios';
 import { cachedGet } from '@/services/cachedGet';
 import { invalidateCachedGet } from '@/services/cachedGet';
-import { clearAuthAccessToken } from '@/services/session';
+import {
+  clearAuthAccessToken,
+  subscribeAuthSessionChange,
+} from '@/services/session';
 import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 import type { ClientProfile } from '@/types/client';
 
@@ -37,7 +41,8 @@ type ProfileAction =
   | { type: 'LOAD_SUCCESS'; profile: ClientProfile }
   | { type: 'LOAD_AUTH_ERROR' }
   | { type: 'LOAD_NETWORK_ERROR' }
-  | { type: 'CLEAR' };
+  | { type: 'CLEAR' }
+  | { type: 'RESET_SESSION' };
 
 const initialState: ProfileState = {
   profile: null,
@@ -63,6 +68,8 @@ function profileReducer(state: ProfileState, action: ProfileAction): ProfileStat
       };
     case 'CLEAR':
       return { profile: null, isLoading: false, hasLoaded: true, authStatus: 'unauthenticated' };
+    case 'RESET_SESSION':
+      return initialState;
     default:
       return state;
   }
@@ -85,13 +92,16 @@ export function ClientProfileProvider({
   clearStoredSessionOnAutoLoadAuthError?: boolean;
 }) {
   const [state, dispatch] = useReducer(profileReducer, initialState);
+  const loadGenerationRef = useRef(0);
 
   const clearProfile = useCallback(() => {
+    loadGenerationRef.current += 1;
     invalidateCachedGet(CLIENT_PROFILE_ENDPOINT);
     dispatch({ type: 'CLEAR' });
   }, []);
 
   const refreshProfile = useCallback(async () => {
+    const loadGeneration = loadGenerationRef.current;
     dispatch({ type: 'LOAD_START' });
     try {
       const response = await cachedGet<ClientProfile>(
@@ -99,8 +109,10 @@ export function ClientProfileProvider({
         undefined,
         { ttlMs: 15000 },
       );
+      if (loadGeneration !== loadGenerationRef.current) return;
       dispatch({ type: 'LOAD_SUCCESS', profile: response.data });
     } catch (error) {
+      if (loadGeneration !== loadGenerationRef.current) return;
       if (isAuthSessionError(error)) {
         dispatch({ type: 'LOAD_AUTH_ERROR' });
       } else {
@@ -110,6 +122,7 @@ export function ClientProfileProvider({
   }, []);
 
   const autoLoadProfile = useCallback(async () => {
+    const loadGeneration = loadGenerationRef.current;
     dispatch({ type: 'LOAD_START' });
     try {
       const response = await cachedGet<ClientProfile>(
@@ -117,8 +130,10 @@ export function ClientProfileProvider({
         { skipAuthRefresh: skipRefreshOnAutoLoad } as AxiosRequestConfig,
         { ttlMs: 15000 },
       );
+      if (loadGeneration !== loadGenerationRef.current) return;
       dispatch({ type: 'LOAD_SUCCESS', profile: response.data });
     } catch (error) {
+      if (loadGeneration !== loadGenerationRef.current) return;
       if (isAuthSessionError(error)) {
         if (clearStoredSessionOnAutoLoadAuthError) {
           clearAuthAccessToken();
@@ -134,6 +149,19 @@ export function ClientProfileProvider({
     if (!autoLoad || state.hasLoaded || state.isLoading) return;
     void autoLoadProfile();
   }, [autoLoad, autoLoadProfile, state.hasLoaded, state.isLoading]);
+
+  useEffect(() => {
+    return subscribeAuthSessionChange(({ snapshot }) => {
+      loadGenerationRef.current += 1;
+      invalidateCachedGet(CLIENT_PROFILE_ENDPOINT);
+      dispatch({ type: 'RESET_SESSION' });
+
+      const activeRole = snapshot.contextSelectionPending ? null : snapshot.role;
+      if (autoLoad && activeRole === 'CLIENT') {
+        void autoLoadProfile();
+      }
+    });
+  }, [autoLoad, autoLoadProfile]);
 
   const value = useMemo(
     () => ({

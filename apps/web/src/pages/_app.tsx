@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -13,7 +13,13 @@ import { LogoutTransitionProvider } from '@/context/LogoutTransitionContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
-import { getKnownAuthSessionRole, getUsableAuthAccessToken } from '@/services/session';
+import {
+  getKnownAuthSessionRole,
+  getUsableAuthAccessToken,
+  subscribeAuthSessionChange,
+} from '@/services/session';
+import { invalidateCachedGet } from '@/services/cachedGet';
+import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { reportWebError } from '@/services/errorTelemetry';
@@ -74,9 +80,23 @@ const shouldBootstrapAuthStateOnPublicPath = (path: string) =>
   path === '/profesional/[slug]' ||
   path === '/reservar';
 
+const isClientProtectedPath = (path: string) =>
+  isRouteOrChild(path, '/cliente') && !isRouteOrChild(path, '/cliente/auth');
+
+const isProfessionalProtectedPath = (path: string) =>
+  isRouteOrChild(path, '/profesional/dashboard') ||
+  isRouteOrChild(path, '/profesional/notificaciones');
+
+const invalidateAuthProfileCaches = () => {
+  invalidateCachedGet('/auth/me');
+  invalidateCachedGet('/auth/me/cliente');
+  invalidateCachedGet('/auth/me/profesional');
+};
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const pathname = router.pathname || '';
+  const [sessionVersion, setSessionVersion] = useState(0);
 
   const routeFlags = useMemo(() => {
     const isClientArea = isRouteOrChild(pathname, '/cliente');
@@ -113,7 +133,7 @@ export default function App({ Component, pageProps }: AppProps) {
       shouldMountProfessionalNotifications:
         isProfessionalDashboardArea || isProfessionalNotificationsArea,
     };
-  }, [pathname]);
+  }, [pathname, sessionVersion]);
 
   const {
     isProfessionalDashboardArea,
@@ -125,6 +145,29 @@ export default function App({ Component, pageProps }: AppProps) {
     shouldMountClientNotifications,
     shouldMountProfessionalNotifications,
   } = routeFlags;
+
+  useEffect(() => {
+    return subscribeAuthSessionChange(({ snapshot }) => {
+      invalidateAuthProfileCaches();
+      clearFavoriteProfessionals();
+      setSessionVersion((version) => version + 1);
+
+      const currentPath = window.location.pathname;
+      const isClientPath = isClientProtectedPath(currentPath);
+      const isProfessionalPath = isProfessionalProtectedPath(currentPath);
+      if (!isClientPath && !isProfessionalPath) return;
+
+      const hasSession = Boolean(snapshot.accessToken || snapshot.hasSessionHint);
+      const activeRole = snapshot.contextSelectionPending ? null : snapshot.role;
+      const isCompatibleProtectedPath =
+        (isClientPath && activeRole === 'CLIENT') ||
+        (isProfessionalPath && activeRole === 'PROFESSIONAL');
+
+      if (!hasSession || !isCompatibleProtectedPath) {
+        void router.replace('/login');
+      }
+    });
+  }, [router]);
 
   useEffect(() => {
     const handleWindowError = (event: ErrorEvent) => {

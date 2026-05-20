@@ -14,7 +14,6 @@ DROP INDEX IF EXISTS idx_payment_event_payout_record;
 DROP INDEX IF EXISTS idx_payment_transaction_subscription;
 
 -- Auth / oauth / provider ops
-DROP INDEX IF EXISTS flyway_schema_history_s_idx;
 DROP INDEX IF EXISTS idx_refresh_token_expires;
 DROP INDEX IF EXISTS idx_auth_refresh_token_user_revoked_at;
 DROP INDEX IF EXISTS idx_app_user_provider;

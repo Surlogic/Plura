@@ -11,6 +11,7 @@ import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { useCategories } from '@/hooks/useCategories';
 import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
+import { fetchAuthMe, hasContext } from '@/lib/auth/contexts';
 import {
   getClientNextBooking,
   type ClientDashboardNextBooking,
@@ -22,7 +23,26 @@ export default function ClienteInicioPage() {
   const { categories } = useCategories();
   const { professionals, isLoading } = usePublicProfessionals();
   const [nextBooking, setNextBooking] = useState<ClientDashboardNextBooking | null>(null);
+  const [canShowAddProfessionalCta, setCanShowAddProfessionalCta] = useState(false);
   const displayName = profile?.fullName || 'Cliente';
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    fetchAuthMe()
+      .then((me) => {
+        if (isCancelled) return;
+        setCanShowAddProfessionalCta(!hasContext(me.contexts, 'PROFESSIONAL'));
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setCanShowAddProfessionalCta(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -53,23 +73,26 @@ export default function ClienteInicioPage() {
     [professionals],
   );
 
+  const addProfessionalCta = canShowAddProfessionalCta ? (
+    <section className="flex flex-col gap-3 rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 className="text-sm font-semibold text-[color:var(--ink)]">¿Tenés un negocio o servicio?</h2>
+        <p className="text-sm text-[color:var(--ink-muted)]">Sumá el contexto profesional a esta misma cuenta.</p>
+      </div>
+      <Button
+        href="/profesional/auth/register?mode=add-professional"
+        variant="secondary"
+        className="w-full sm:w-auto"
+      >
+        Quiero sumarme como negocio
+      </Button>
+    </section>
+  ) : null;
+
   return (
     <ClientShell name={displayName} active="inicio">
       <main className="space-y-14">
         <DashboardHero name={displayName} location="" />
-        <section className="flex flex-col gap-3 rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-[color:var(--ink)]">¿Tenés un negocio o servicio?</h2>
-            <p className="text-sm text-[color:var(--ink-muted)]">Sumá el contexto profesional a esta misma cuenta.</p>
-          </div>
-          <Button
-            href="/profesional/auth/register?mode=add-professional"
-            variant="secondary"
-            className="w-full sm:w-auto"
-          >
-            Quiero sumarme como negocio
-          </Button>
-        </section>
         {profile && !profile.emailVerified ? (
           <EmailVerificationPanel
             email={profile.email}
@@ -85,6 +108,7 @@ export default function ClienteInicioPage() {
         <CategoryChips categories={categories} />
         <NextBookingSection booking={nextBooking} />
         <SuggestedSection suggestions={suggestions} isLoading={isLoading} />
+        {addProfessionalCta}
       </main>
     </ClientShell>
   );

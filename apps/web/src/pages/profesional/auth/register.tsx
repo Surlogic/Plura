@@ -1972,9 +1972,9 @@ export default function ProfesionalRegisterPage() {
     const selectedMapLocation = locationPreview || mapCenter;
 
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(460px,0.95fr)]">
-        <div className="space-y-5">
-          <div className="space-y-2">
+      <div className="grid min-h-[calc(100dvh-20rem)] gap-6 sm:min-h-[calc(100dvh-18rem)] lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-stretch xl:min-h-[calc(100dvh-16rem)] xl:grid-cols-[minmax(0,1fr)_minmax(460px,0.95fr)]">
+        <div className="flex flex-col justify-center gap-6 lg:py-4">
+          <div className="space-y-2.5">
             <Badge variant="success">Registro</Badge>
             <h1 className={wizardTitleClassName}>¿Dónde atendés?</h1>
             <p className="text-base text-[color:var(--ink-muted)]">Ingresá la ubicación de tu local.</p>
@@ -2016,9 +2016,9 @@ export default function ProfesionalRegisterPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
-          <div className="relative h-[min(38dvh,22rem)] min-h-64">
-            <div className="absolute left-3 right-3 top-3 z-10 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-3 shadow-[var(--shadow-card)] backdrop-blur sm:left-4 sm:right-4 sm:top-4 sm:p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative h-[min(58dvh,32rem)] min-h-80 sm:min-h-96 lg:h-full lg:min-h-[420px] lg:max-h-[520px]">
+            <div className="absolute left-3 right-3 top-3 z-10 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-3 shadow-[var(--shadow-card)] backdrop-blur sm:left-4 sm:right-4 sm:top-4">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[color:var(--ink)]">Ajustá la ubicación</p>
                   <p className="text-xs text-[color:var(--ink-muted)]">Mové el mapa y hacé zoom hasta que el pin quede sobre la entrada exacta.</p>
@@ -2067,7 +2067,7 @@ export default function ProfesionalRegisterPage() {
                 </div>
               </Marker>
             </MapView>
-            <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-card)] backdrop-blur sm:bottom-4 sm:left-4 sm:right-4 sm:p-4">
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-card)] backdrop-blur sm:bottom-4 sm:left-4 sm:right-4">
               <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
               <p className="text-sm text-[color:var(--ink-muted)]">
                 {isLocationPreviewLoading || isReverseGeocodingLocation

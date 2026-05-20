@@ -175,6 +175,16 @@ type PendingProfessionalRegistrationCheckout = {
 
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 const PROFESSIONAL_REGISTRATION_CHECKOUT_KEY = 'plura:professional-registration-checkout';
+const PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS = 5;
+const PROFESSIONAL_CHECKOUT_VERIFY_RETRY_DELAY_MS = 2000;
+
+const wait = (milliseconds: number) => new Promise<void>((resolve) => {
+  window.setTimeout(resolve, milliseconds);
+});
+
+const hasQueryFlag = (value: string | string[] | undefined) => (
+  Array.isArray(value) ? value.includes('1') : value === '1'
+);
 
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
@@ -277,6 +287,7 @@ export default function ProfesionalRegisterPage() {
   const [isReverseGeocodingLocation, setIsReverseGeocodingLocation] = useState(false);
   const [locationSelectionSource, setLocationSelectionSource] = useState<LocationSelectionSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkoutConfirmationMessage, setCheckoutConfirmationMessage] = useState<string | null>(null);
   const [remoteFieldErrors, setRemoteFieldErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const locationMapRef = useRef<MapRef | null>(null);
@@ -341,38 +352,62 @@ export default function ProfesionalRegisterPage() {
 
   useEffect(() => {
     if (!router.isReady || typeof window === 'undefined') return;
+    const isBillingReturn = hasQueryFlag(router.query.billingReturn) || hasQueryFlag(router.query.resume);
+    if (!isBillingReturn) return;
+
     const raw = window.sessionStorage.getItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
-    if (!raw) return;
+    if (!raw) {
+      setErrorMessage('No encontramos una activación pendiente de Mercado Pago. No se creó el perfil profesional; podés reintentar desde el wizard.');
+      return;
+    }
+    let isActive = true;
 
     let pending: PendingProfessionalRegistrationCheckout | null = null;
     try {
       pending = JSON.parse(raw) as PendingProfessionalRegistrationCheckout;
     } catch {
       window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+      setErrorMessage('No pudimos recuperar la activación pendiente de Mercado Pago. No se creó el perfil profesional; podés reintentar desde el wizard.');
       return;
     }
 
     if (!pending?.payload || !pending.handoff) {
       window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+      setErrorMessage('La activación pendiente de Mercado Pago quedó incompleta. No se creó el perfil profesional; podés reintentar desde el wizard.');
       return;
     }
 
     const resumePendingCheckout = async () => {
       setIsSubmitting(true);
       setErrorMessage(null);
+      setCheckoutConfirmationMessage('Confirmando activación con Mercado Pago...');
       try {
         if (!pending.checkoutToken) {
           setErrorMessage('No pudimos asociar la autorización de Mercado Pago. No se creó el perfil profesional; podés reintentar Core desde el wizard.');
           return;
         }
 
-        const verification = await verifyProfessionalRegistrationCheckout(pending.checkoutToken);
-        if (!verification.confirmed) {
+        let confirmedCheckoutToken: string | null = null;
+        for (let attempt = 1; attempt <= PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS; attempt += 1) {
+          const verification = await verifyProfessionalRegistrationCheckout(pending.checkoutToken);
+          if (!isActive) return;
+
+          if (verification.confirmed) {
+            confirmedCheckoutToken = verification.checkoutToken || pending.checkoutToken;
+            break;
+          }
+
+          if (attempt < PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS) {
+            await wait(PROFESSIONAL_CHECKOUT_VERIFY_RETRY_DELAY_MS);
+            if (!isActive) return;
+          }
+        }
+
+        if (!confirmedCheckoutToken) {
           setErrorMessage('Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar cuando quieras.');
           return;
         }
 
-        const confirmedCheckoutToken = verification.checkoutToken || pending.checkoutToken;
         await createProfessionalAfterConfirmed(
           pending.payload,
           pending.handoff,
@@ -382,11 +417,17 @@ export default function ProfesionalRegisterPage() {
       } catch (error) {
         setErrorMessage(extractApiMessage(error, 'No pudimos confirmar Mercado Pago. No se creó el perfil profesional.'));
       } finally {
-        setIsSubmitting(false);
+        if (isActive) {
+          setCheckoutConfirmationMessage(null);
+          setIsSubmitting(false);
+        }
       }
     };
 
     void resumePendingCheckout();
+    return () => {
+      isActive = false;
+    };
   // Se ejecuta solo al volver/cargar la pagina con un checkout pendiente.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady]);
@@ -1202,6 +1243,7 @@ export default function ProfesionalRegisterPage() {
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
     setErrorMessage(null);
+    setCheckoutConfirmationMessage(null);
     setBillingRecoveryAvailable(false);
     const allFields = Object.keys(validationErrors) as Array<keyof RegisterForm>;
     markTouched(allFields);
@@ -1997,6 +2039,12 @@ export default function ProfesionalRegisterPage() {
                 </p>
               ) : null}
 
+              {checkoutConfirmationMessage ? (
+                <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink-muted)]">
+                  {checkoutConfirmationMessage}
+                </p>
+              ) : null}
+
               {errorMessage ? (
                 <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
                   <p>{errorMessage}</p>
@@ -2045,6 +2093,8 @@ export default function ProfesionalRegisterPage() {
                     loadingLabel={
                       isRedirectingToCheckout
                         ? 'Redirigiendo a Mercado Pago...'
+                        : checkoutConfirmationMessage
+                          ? checkoutConfirmationMessage
                         : isOAuthSetup
                           ? 'Activando Plura Core...'
                           : 'Creando perfil...'

@@ -45,8 +45,8 @@ Lectura operativa actual:
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT`, `PROFESSIONAL` o `WORKER`) para bootstrap de sesion en rutas publicas; deriva primero `ctx` del access token en memoria y solo usa `role` como fallback legacy. El access token web no se guarda en localStorage ni via el sync cross-tab; al reabrir navegador se recupera por `POST /auth/refresh` cuando existe cookie/sesion valida
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
 - el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
-- el registro por email cliente y la verificacion telefonica autenticada usan Vonage Verify API; en `/auth/register/phone/send|confirm` y `/auth/verify/phone/send|confirm`, el backend persiste internamente el `request_id` de Vonage para mantener estable el contrato publico `telefono + codigo`; al activar `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, el registro cliente exige telefono verificado, mientras el registro profesional puede guardar el telefono como contacto sin marcarlo verificado. Cuando un telefono queda verificado, no se reutiliza en otra cuenta activa
-- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; ese cierre ya acepta el mismo `phoneVerificationToken` emitido tras Vonage Verify para dejar el numero validado en el acto
+- el registro por email cliente, el OTP SMS opcional de registro y la verificacion telefonica autenticada usan Vonage Verify API; en `/auth/register/phone/send|confirm` y `/auth/verify/phone/send|confirm`, el backend persiste internamente el `request_id` de Vonage para mantener estable el contrato publico `telefono + codigo`. El registro cliente y el registro profesional guardan telefono sin exigir OTP; si un `phoneVerificationToken` valido llega en el alta, el telefono queda verificado. Cuando un telefono queda verificado, no se reutiliza en otra cuenta activa
+- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; para contexto cliente ese cierre no exige OTP y acepta el mismo `phoneVerificationToken` emitido tras Vonage Verify solo como verificacion opcional
 - las invitaciones de trabajadores usan endpoints publicos bajo `/auth/worker-invitations`; el token se guarda hasheado en `professional_worker`, vence a los `14` dias y al aceptarlo vincula o crea un `app_user` de base `USER` para que luego pueda entrar por el futuro login unificado/contextual
 
 ### Marketplace, ubicacion y mapa
@@ -197,7 +197,7 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
 
-Variables de backend para OTP SMS de registro con Vonage Verify API:
+Variables de backend para OTP SMS opcional de registro con Vonage Verify API:
 
 - `VONAGE_VERIFY_ENABLED`
 - `VONAGE_VERIFY_BASE_URL`
@@ -209,6 +209,9 @@ Variables de backend para OTP SMS de registro con Vonage Verify API:
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_COOLDOWN_SECONDS`
+
+`AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED` ya no vuelve obligatorio el OTP del registro cliente; el alta cliente guarda telefono sin token y solo marca `phoneVerifiedAt` cuando recibe un `phoneVerificationToken` valido.
+
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_ENABLED`
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_LABEL`
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_INSTANT_PROVIDER_FEE_PERCENT`

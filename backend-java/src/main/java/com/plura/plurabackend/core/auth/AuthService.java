@@ -299,7 +299,7 @@ public class AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
-            registrationPhoneVerificationService.resolveForRegistration(
+            registrationPhoneVerificationService.resolveOptionalForRegistration(
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );
@@ -1451,10 +1451,15 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
-            registrationPhoneVerificationService.resolveForRegistration(
-                request.getPhoneNumber(),
-                request.getPhoneVerificationToken()
-            );
+            hasClientContext(user)
+                ? registrationPhoneVerificationService.resolveOptionalForRegistration(
+                    request.getPhoneNumber(),
+                    request.getPhoneVerificationToken()
+                )
+                : registrationPhoneVerificationService.resolveForRegistration(
+                    request.getPhoneNumber(),
+                    request.getPhoneVerificationToken()
+                );
         String normalizedPhone = phoneVerification.phoneNumber();
 
         String currentPhone = normalizePhoneNumber(user.getPhoneNumber());

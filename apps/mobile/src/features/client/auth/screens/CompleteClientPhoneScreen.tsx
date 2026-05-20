@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,11 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
 import { useClientSession } from '../../session/useClientSession';
 import { hasMinimumPhoneDigits } from '../../../../lib/internationalPhone';
-import {
-  completeOAuthPhone,
-  confirmRegistrationPhoneVerification,
-  sendRegistrationPhoneVerification,
-} from '../../../../services/authBackend';
+import { completeOAuthPhone } from '../../../../services/authBackend';
 import { getApiErrorMessage } from '../../../../services/errors';
 import InternationalPhoneField from '../../../../components/ui/InternationalPhoneField';
 import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
@@ -29,39 +24,6 @@ export function CompleteClientPhoneScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
-  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
-
-  const handleSendPhoneCode = async () => {
-    setErrorMessage(null);
-    setPhoneVerificationMessage(null);
-    try {
-      setIsSendingPhoneCode(true);
-      const response = await sendRegistrationPhoneVerification(phoneNumber.trim());
-      setPhoneVerificationMessage(response.message);
-    } catch (error: unknown) {
-      setErrorMessage(getApiErrorMessage(error, 'No pudimos enviar el codigo.'));
-    } finally {
-      setIsSendingPhoneCode(false);
-    }
-  };
-
-  const handleConfirmPhoneCode = async () => {
-    setErrorMessage(null);
-    try {
-      setIsConfirmingPhoneCode(true);
-      const response = await confirmRegistrationPhoneVerification(phoneNumber.trim(), phoneVerificationCode.trim());
-      setPhoneVerificationToken(response.verificationToken);
-      setPhoneVerificationMessage('Telefono verificado correctamente.');
-    } catch (error: unknown) {
-      setErrorMessage(getApiErrorMessage(error, 'No pudimos verificar el codigo.'));
-    } finally {
-      setIsConfirmingPhoneCode(false);
-    }
-  };
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -71,14 +33,9 @@ export function CompleteClientPhoneScreen() {
       return;
     }
 
-    if (!phoneVerificationToken) {
-      setErrorMessage('Verifica tu telefono antes de continuar.');
-      return;
-    }
-
     try {
       setIsSubmitting(true);
-      await completeOAuthPhone(phoneNumber.trim(), phoneVerificationToken);
+      await completeOAuthPhone(phoneNumber.trim());
       await refreshProfile();
       await continueAfterClientAuth();
     } catch (error: unknown) {
@@ -131,46 +88,10 @@ export function CompleteClientPhoneScreen() {
               <InternationalPhoneField
                 label="Telefono"
                 value={phoneNumber}
-                onChange={(value) => {
-                  setPhoneNumber(value);
-                  setPhoneVerificationCode('');
-                  setPhoneVerificationToken('');
-                  setPhoneVerificationMessage(null);
-                }}
+                onChange={setPhoneNumber}
                 placeholder="11 2345 6789"
                 helperText="Se guarda en formato internacional para login social y recuperacion."
               />
-
-              <View className="mt-4 flex-row" style={{ gap: 8 }}>
-                <TextInput
-                  className="h-12 flex-1 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
-                  placeholder="Codigo SMS"
-                  keyboardType="number-pad"
-                  value={phoneVerificationCode}
-                  onChangeText={setPhoneVerificationCode}
-                  maxLength={10}
-                />
-                <TouchableOpacity
-                  className="h-12 items-center justify-center rounded-2xl border border-secondary/10 px-4"
-                  onPress={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
-                  disabled={isSendingPhoneCode || isConfirmingPhoneCode || Boolean(phoneVerificationToken)}
-                >
-                  <Text className="text-xs font-semibold text-secondary">
-                    {phoneVerificationToken
-                      ? 'Verificado'
-                      : phoneVerificationCode
-                        ? isConfirmingPhoneCode
-                          ? 'Verificando...'
-                          : 'Confirmar'
-                        : isSendingPhoneCode
-                          ? 'Enviando...'
-                          : 'Enviar OTP'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {phoneVerificationMessage ? (
-                <Text className="mt-2 text-xs font-semibold text-emerald-700">{phoneVerificationMessage}</Text>
-              ) : null}
 
               {errorMessage ? (
                 <View className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3">
@@ -181,7 +102,7 @@ export function CompleteClientPhoneScreen() {
               <TouchableOpacity
                 className="mt-6 shadow-md"
                 onPress={handleSubmit}
-                disabled={isSubmitting || !phoneVerificationToken}
+                disabled={isSubmitting}
                 activeOpacity={0.85}
               >
                 <LinearGradient

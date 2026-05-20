@@ -16,8 +16,6 @@ import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
 import { getApiErrorMessage } from '../../../../services/errors';
 import api from '../../../../services/api';
 import {
-  confirmRegistrationPhoneVerification,
-  sendRegistrationPhoneVerification,
   type OAuthResult,
 } from '../../../../services/authBackend';
 import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
@@ -52,11 +50,6 @@ export function ClientRegisterScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
-  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
 
   const handleOAuthAuthenticated = async (result: OAuthResult) => {
     setErrorMessage(null);
@@ -85,37 +78,6 @@ export function ClientRegisterScreen() {
       setErrorMessage(message || null);
     },
   });
-
-  const handleSendPhoneCode = async () => {
-    setErrorMessage(null);
-    setPhoneVerificationMessage(null);
-    try {
-      setIsSendingPhoneCode(true);
-      const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
-      setPhoneVerificationMessage(response.message);
-    } catch (error: unknown) {
-      setErrorMessage(getApiErrorMessage(error, 'No se pudo enviar el codigo.'));
-    } finally {
-      setIsSendingPhoneCode(false);
-    }
-  };
-
-  const handleConfirmPhoneCode = async () => {
-    setErrorMessage(null);
-    try {
-      setIsConfirmingPhoneCode(true);
-      const response = await confirmRegistrationPhoneVerification(
-        form.phoneNumber.trim(),
-        phoneVerificationCode.trim(),
-      );
-      setPhoneVerificationToken(response.verificationToken);
-      setPhoneVerificationMessage('Telefono verificado correctamente.');
-    } catch (error: unknown) {
-      setErrorMessage(getApiErrorMessage(error, 'No se pudo verificar el codigo.'));
-    } finally {
-      setIsConfirmingPhoneCode(false);
-    }
-  };
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -151,18 +113,12 @@ export function ClientRegisterScreen() {
       return;
     }
 
-    if (!phoneVerificationToken) {
-      setErrorMessage('Verifica tu telefono antes de crear la cuenta.');
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       await api.post(clientAuthCopy.registerEndpoint, {
         fullName,
         email,
         phoneNumber,
-        phoneVerificationToken,
         password: form.password,
       });
 
@@ -293,46 +249,10 @@ export function ClientRegisterScreen() {
               <InternationalPhoneField
                 label="Telefono"
                 value={form.phoneNumber}
-                onChange={(value) => {
-                  setForm((prev) => ({ ...prev, phoneNumber: value }));
-                  setPhoneVerificationToken('');
-                  setPhoneVerificationCode('');
-                  setPhoneVerificationMessage(null);
-                }}
+                onChange={(value) => setForm((prev) => ({ ...prev, phoneNumber: value }))}
                 placeholder="11 2345 6789"
                 helperText="Selecciona el pais y escribe el numero sin repetir el codigo internacional."
               />
-
-              <View className="mt-4 flex-row" style={{ gap: 8 }}>
-                <TextInput
-                  className="h-12 flex-1 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
-                  placeholder="Codigo SMS"
-                  keyboardType="number-pad"
-                  value={phoneVerificationCode}
-                  onChangeText={setPhoneVerificationCode}
-                  maxLength={10}
-                />
-                <TouchableOpacity
-                  className="h-12 items-center justify-center rounded-2xl border border-secondary/10 px-4"
-                  onPress={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
-                  disabled={isSendingPhoneCode || isConfirmingPhoneCode || Boolean(phoneVerificationToken)}
-                >
-                  <Text className="text-xs font-semibold text-secondary">
-                    {phoneVerificationToken
-                      ? 'Verificado'
-                      : phoneVerificationCode
-                        ? isConfirmingPhoneCode
-                          ? 'Verificando...'
-                          : 'Confirmar'
-                        : isSendingPhoneCode
-                          ? 'Enviando...'
-                          : 'Enviar OTP'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {phoneVerificationMessage ? (
-                <Text className="mt-2 text-xs font-semibold text-emerald-700">{phoneVerificationMessage}</Text>
-              ) : null}
 
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Contrasena</Text>
@@ -371,7 +291,7 @@ export function ClientRegisterScreen() {
               <TouchableOpacity
                 className="mt-6 shadow-md"
                 onPress={handleSubmit}
-                disabled={isSubmitting || isGoogleSubmitting || !phoneVerificationToken}
+                disabled={isSubmitting || isGoogleSubmitting}
                 activeOpacity={0.85}
               >
                 <LinearGradient

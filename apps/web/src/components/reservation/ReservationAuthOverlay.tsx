@@ -14,10 +14,6 @@ import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import type { ClientProfile } from '@/types/client';
 import api from '@/services/api';
 import {
-  confirmRegistrationPhoneVerification,
-  sendRegistrationPhoneVerification,
-} from '@/services/registrationPhoneVerification';
-import {
   ensureAuthContext,
   persistAccessTokenForContext,
   type UnifiedLoginResponse,
@@ -80,11 +76,6 @@ export default function ReservationAuthOverlay({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
-  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
-  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
 
   const isRegisterMode = mode === 'register';
   const isBusy = isSubmitting || isGoogleLoading;
@@ -119,9 +110,6 @@ export default function ReservationAuthOverlay({
       setMode('register');
       setLoginForm(loginFormInitial);
       setRegisterForm(registerFormInitial);
-      setPhoneVerificationCode('');
-      setPhoneVerificationToken('');
-      setPhoneVerificationMessage(null);
       setErrorMessage(null);
       setIsGoogleLoading(false);
       setIsSubmitting(false);
@@ -206,42 +194,6 @@ export default function ReservationAuthOverlay({
       ...current,
       [name]: name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value,
     }));
-    if (name === 'phoneNumber') {
-      setPhoneVerificationCode('');
-      setPhoneVerificationToken('');
-      setPhoneVerificationMessage(null);
-    }
-  };
-
-  const handleSendPhoneCode = async () => {
-    setErrorMessage(null);
-    setPhoneVerificationMessage(null);
-    try {
-      setIsSendingPhoneCode(true);
-      const response = await sendRegistrationPhoneVerification(registerForm.phoneNumber.trim());
-      setPhoneVerificationMessage(response.message);
-    } catch (error) {
-      setErrorMessage(resolveApiMessage(error, 'No pudimos enviar el c?digo.'));
-    } finally {
-      setIsSendingPhoneCode(false);
-    }
-  };
-
-  const handleConfirmPhoneCode = async () => {
-    setErrorMessage(null);
-    try {
-      setIsConfirmingPhoneCode(true);
-      const response = await confirmRegistrationPhoneVerification(
-        registerForm.phoneNumber.trim(),
-        phoneVerificationCode.trim(),
-      );
-      setPhoneVerificationToken(response.verificationToken);
-      setPhoneVerificationMessage('Celular verificado correctamente.');
-    } catch (error) {
-      setErrorMessage(resolveApiMessage(error, 'No pudimos verificar el c?digo.'));
-    } finally {
-      setIsConfirmingPhoneCode(false);
-    }
   };
 
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -281,11 +233,6 @@ export default function ReservationAuthOverlay({
       return;
     }
 
-    if (!phoneVerificationToken) {
-      setErrorMessage('Verific? tu celular antes de crear la cuenta.');
-      return;
-    }
-
     const email = registerForm.email.trim().toLowerCase();
     const password = registerForm.password;
 
@@ -296,7 +243,6 @@ export default function ReservationAuthOverlay({
         fullName: registerForm.fullName.trim(),
         password,
         phoneNumber: registerForm.phoneNumber.trim(),
-        phoneVerificationToken,
       });
 
       setLoginForm((current) => ({
@@ -305,9 +251,6 @@ export default function ReservationAuthOverlay({
         password: '',
       }));
       setRegisterForm(registerFormInitial);
-      setPhoneVerificationCode('');
-      setPhoneVerificationToken('');
-      setPhoneVerificationMessage(null);
       setMode('login');
       setSuccessMessage('Si el email no estaba registrado, la cuenta fue creada. Iniciá sesión para confirmar la reserva.');
     } catch (error) {
@@ -475,44 +418,12 @@ export default function ReservationAuthOverlay({
                         ...current,
                         phoneNumber: nextPhoneNumber,
                       }));
-                      setPhoneVerificationCode('');
-                      setPhoneVerificationToken('');
-                      setPhoneVerificationMessage(null);
                     }}
                     required
                     selectClassName={inputClassName}
                     inputClassName={inputClassName}
                     inputPlaceholder="11 2345 6789"
                   />
-                  <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <input
-                      className={inputClassName}
-                      placeholder="Código SMS"
-                      value={phoneVerificationCode}
-                      onChange={(event) => setPhoneVerificationCode(event.target.value)}
-                      inputMode="numeric"
-                      maxLength={10}
-                    />
-                    <Button
-                      type="button"
-                      variant="quiet"
-                      onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
-                      disabled={isSendingPhoneCode || isConfirmingPhoneCode || Boolean(phoneVerificationToken)}
-                    >
-                      {phoneVerificationToken
-                        ? 'Verificado'
-                        : phoneVerificationCode
-                          ? isConfirmingPhoneCode
-                            ? 'Verificando...'
-                            : 'Confirmar'
-                          : isSendingPhoneCode
-                            ? 'Enviando...'
-                            : 'Enviar OTP'}
-                    </Button>
-                  </div>
-                  {phoneVerificationMessage ? (
-                    <p className="mt-2 text-xs font-semibold text-[color:var(--primary)]">{phoneVerificationMessage}</p>
-                  ) : null}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

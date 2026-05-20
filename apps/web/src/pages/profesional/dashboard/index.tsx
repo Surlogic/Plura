@@ -12,7 +12,6 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import api from '@/services/api';
 import {
   DashboardIcon,
-  DashboardPageHeader,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
@@ -450,7 +449,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 
         <div
           ref={scrollContainerRef}
-          className="relative max-h-[560px] overflow-y-auto overscroll-contain scroll-smooth"
+          className="relative min-h-[430px] max-h-[560px] overflow-y-auto overscroll-contain scroll-smooth lg:max-h-[calc(100vh-292px)]"
         >
           {hourMarkers.map((hourStartMinutes) => (
             <div
@@ -1022,24 +1021,6 @@ export default function ProfesionalDashboardPage() {
       });
   }, [agendaReservations, todayKey]);
 
-  const topRequestedServices = useMemo(() => {
-    const counts = new Map<string, number>();
-    agendaReservations.forEach((reservation) => {
-      const name = reservation.serviceName || 'Servicio';
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    });
-    const total = Array.from(counts.values()).reduce((sum, count) => sum + count, 0);
-    if (total === 0) return [];
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
-      .map(([name, count]) => ({
-        name,
-        count,
-        percent: Math.round((count / total) * 100),
-      }));
-  }, [agendaReservations]);
-
   const todayConfirmedRevenueReservations = useMemo(
     () => todayReservations.filter((reservation) => {
       const status = reservation.status ?? 'pending';
@@ -1054,6 +1035,27 @@ export default function ProfesionalDashboardPage() {
     ),
     [todayConfirmedRevenueReservations],
   );
+
+  const todayLabel = useMemo(() => {
+    const label = new Intl.DateTimeFormat('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(today);
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }, [today]);
+
+  const upcomingTodayReservations = useMemo(() => {
+    const currentMinutes = clockNow.getHours() * 60 + clockNow.getMinutes();
+    return todayReservations
+      .filter((reservation) => {
+        const status = reservation.status ?? 'pending';
+        if (status === 'completed' || status === 'cancelled') return false;
+        const reservationMinutes = parseTimeToMinutes(reservation.time);
+        return reservationMinutes === null || reservationMinutes >= currentMinutes;
+      })
+      .slice(0, 4);
+  }, [clockNow, todayReservations]);
 
   const handlePrev = () => {
     if (!canNavigateCalendar) return;
@@ -1123,37 +1125,43 @@ export default function ProfesionalDashboardPage() {
 
   return (
     <ProfessionalDashboardShell profile={profile} active="Agenda">
-      <div className="space-y-6">
-        <DashboardPageHeader
-          eyebrow="OPERACIÓN"
-          title="Agenda"
-          description="Visualizá tus reservas y tu calendario semanal."
-          actions={(
-            <>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleToday}
-                className="h-9 rounded-xl border-[#E2E8F0] bg-white px-3 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
-              >
-                <DashboardIcon name="agenda" className="mr-2 h-4 w-4" />
-                Hoy
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                onClick={() => {
-                  requestNavigation('/profesional/dashboard/reservas');
-                }}
-                className="h-9 rounded-xl px-3"
-              >
-                <span className="mr-2 text-base leading-none">+</span>
-                Nueva reserva
-              </Button>
-            </>
-          )}
-        />
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-[#64748B]">
+              OPERACIÓN
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-[#0F172A]">
+              Agenda
+            </h1>
+            <p className="mt-1 text-sm text-[#64748B]">
+              Visualizá tus reservas y tu calendario semanal.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleToday}
+              className="h-9 rounded-xl border-[#E2E8F0] bg-white px-3 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
+            >
+              <DashboardIcon name="agenda" className="mr-2 h-4 w-4" />
+              Hoy
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                requestNavigation('/profesional/dashboard/reservas');
+              }}
+              className="h-9 rounded-xl px-3"
+            >
+              <span className="mr-2 text-base leading-none">+</span>
+              Nueva reserva
+            </Button>
+          </div>
+        </div>
           {profile && !profile.emailVerified ? (
             <EmailVerificationPanel
               email={profile.email}
@@ -1182,11 +1190,12 @@ export default function ProfesionalDashboardPage() {
                 icon={item.icon}
                 tone={item.tone}
                 variant="compact"
-                className="p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                className="min-h-[86px] p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
               />
             ))}
           </section>
 
+          <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]">
           <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex flex-col gap-3 border-b border-[#E2E8F0] bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
               <div className="min-w-0">
@@ -1290,99 +1299,105 @@ export default function ProfesionalDashboardPage() {
             )}
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-3">
-            <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <DashboardIcon name="agenda" className="h-4 w-4 text-[#0F766E]" />
-                  <h3 className="text-sm font-medium text-[#0F172A]">Reservas de hoy</h3>
-                </div>
-                <span className="text-xs text-[#64748B]">{todayReservations.length} total</span>
+          <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:sticky lg:top-5 lg:self-start">
+            <div className="flex items-start gap-3">
+              <DashboardIcon name="agenda" className="mt-0.5 h-5 w-5 text-[#0F766E]" />
+              <div>
+                <h2 className="text-base font-semibold text-[#0F172A]">
+                  {todayLabel}
+                </h2>
+                <p className="mt-1 text-sm text-[#64748B]">Resumen del día</p>
               </div>
-              <div className="max-h-[280px] space-y-1 overflow-y-auto p-2">
-                {todayReservations.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#64748B]">
-                    No hay reservas para hoy.
-                  </p>
+            </div>
+
+            <div className="mt-5 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-medium text-[#0F172A]">
+                  <DashboardIcon name="reservas" className="h-4 w-4 text-[#0F766E]" />
+                  Reservas
+                </span>
+                <span className="font-semibold text-[#0F172A]">
+                  {todayReservations.length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-medium text-[#0F172A]">
+                  <DashboardIcon name="warning" className="h-4 w-4 text-[#0F766E]" />
+                  Pendientes
+                </span>
+                <span className="font-semibold text-[#0F172A]">
+                  {todayPendingCount}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-medium text-[#0F172A]">
+                  <DashboardIcon name="analytics" className="h-4 w-4 text-[#0F766E]" />
+                  Ingresos
+                </span>
+                <span className="font-semibold text-[#0F172A]">
+                  {todayEstimatedRevenue > 0 ? formatMoneyValue(todayEstimatedRevenue) : '$0'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-[#E2E8F0] pt-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-[#0F172A]">
+                  Próximas reservas
+                </h3>
+                <span className="text-xs font-medium text-[#64748B]">
+                  {todayConfirmedRevenueReservations.length} validadas
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {upcomingTodayReservations.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-center text-sm text-[#64748B]">
+                    <DashboardIcon
+                      name="agenda"
+                      className="mx-auto mb-2 h-5 w-5 text-[#64748B]"
+                    />
+                    No tenés reservas para este día.
+                  </div>
                 ) : (
-                  todayReservations.map((reservation) => {
+                  upcomingTodayReservations.map((reservation) => {
                     const statusBadge = getReservationStatusBadge(reservation.status);
                     return (
                       <button
                         key={reservation.id}
                         type="button"
                         onClick={() => handleOpenReservation(reservation)}
-                        className="group w-full rounded-lg p-3 text-left transition hover:bg-[#ECFDF5]"
+                        className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-left transition hover:border-[#0F766E]/40 hover:bg-[#ECFDF5]"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-[#0F172A]">
-                                {reservation.time || '--:--'}
-                              </span>
-                              <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${statusBadge.className}`}>
-                                {statusBadge.label}
-                              </span>
-                            </div>
-                            <p className="mt-1 truncate text-sm text-[#0F172A]">
-                              {reservation.serviceName || 'Servicio'}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-[#64748B]">
-                              {reservation.clientName || 'Cliente'}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-[#94A3B8] opacity-0 transition group-hover:opacity-100">
-                            ›
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-[#0F172A]">
+                            {reservation.time || '--:--'}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${statusBadge.className}`}>
+                            {statusBadge.label}
                           </span>
                         </div>
+                        <p className="mt-1 truncate text-sm font-medium text-[#0F172A]">
+                          {reservation.serviceName || 'Servicio'}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                          {reservation.clientName || 'Cliente'}
+                        </p>
                       </button>
                     );
                   })
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  requestNavigation('/profesional/dashboard/reservas');
+                }}
+                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#0F766E] transition hover:text-[#047857]"
+              >
+                Ver todas las reservas →
+              </button>
             </div>
-
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-              <div className="mb-4 flex items-center gap-2">
-                <DashboardIcon name="analytics" className="h-4 w-4 text-[#0F766E]" />
-                <h3 className="text-sm font-medium text-[#0F172A]">Servicios más solicitados</h3>
-              </div>
-              {topRequestedServices.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#64748B]">
-                  Todavía no hay servicios con reservas en el rango cargado.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {topRequestedServices.map((service) => (
-                    <div key={service.name}>
-                      <div className="mb-1 flex items-center justify-between gap-3">
-                        <span className="truncate text-xs text-[#0F172A]">{service.name}</span>
-                        <span className="text-xs text-[#64748B]">{service.percent}%</span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[#ECFDF5]">
-                        <div
-                          className="h-full rounded-full bg-[#0F766E]"
-                          style={{ width: `${service.percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <DashboardIcon name="analytics" className="h-4 w-4 text-[#0F766E]" />
-                <h3 className="text-sm font-medium text-[#0F172A]">Ingresos estimados hoy</h3>
-              </div>
-              <p className="mb-1 text-[1.75rem] font-medium leading-none text-[#0F172A]">
-                {todayEstimatedRevenue > 0 ? formatMoneyValue(todayEstimatedRevenue) : '$0'}
-              </p>
-              <p className="text-xs text-[#64748B]">
-                De {todayConfirmedRevenueReservations.length} reservas confirmadas y completadas
-              </p>
-            </div>
+          </aside>
           </section>
       </div>
       {selectedReservation ? (

@@ -204,7 +204,7 @@ Lectura de producto:
 
 Modulos relevantes:
 
-- `components/profesional`: UI publica y dashboard; el shell del dashboard profesional permite ocultar/mostrar el sidebar en desktop y persiste el estado en `localStorage`; el sidebar mantiene perfil, plan Core, navegacion y muestra `Entrar como cliente` solo si `/auth/me` expone contexto `CLIENT`, selecciona `ctx=CLIENT` y redirige a `/cliente/inicio`.
+- `components/profesional`: UI publica y dashboard; el shell del dashboard profesional permite colapsar/expandir el sidebar en desktop, conserva una vista compacta de iconos y persiste el estado en `localStorage`; el sidebar mantiene perfil, plan Core, navegacion, acciones inferiores y muestra `Entrar como cliente` solo si `/auth/me` expone contexto `CLIENT`, selecciona `ctx=CLIENT` y redirige a `/cliente/inicio`.
 - `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura; los eventos de refund nuevos ya no se emiten para profesional.
 - `components/profesional/reservations`: timeline operativo dentro del panel de detalle de la reserva seleccionada.
 - `context/ProfessionalNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para sincronizar inbox, dropdown y contador sin duplicar requests.

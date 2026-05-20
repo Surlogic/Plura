@@ -16,6 +16,7 @@ import {
   type DashboardIconName,
 } from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
+import { useAuthLogout } from '@/hooks/useAuthLogout';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import { buildProfessionalMediaStyle } from '@/utils/professionalMediaPresentation';
 
@@ -69,7 +70,6 @@ const menuSections: MenuSection[] = [
     items: [
       { label: 'Facturación', href: '/profesional/dashboard/billing', icon: 'plan' },
       { label: 'Configuración', href: '/profesional/dashboard/configuracion', icon: 'configuracion' },
-      { label: 'Acceso', href: '/profesional/dashboard/acceso', icon: 'configuracion' },
     ],
   },
 ];
@@ -83,15 +83,22 @@ const formatNotificationBadgeCount = (count: number) => {
 type SidebarProps = {
   profile?: ProfessionalProfile | null;
   active: string;
-  onRequestHide?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
-function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
+function ProfesionalSidebar({
+  profile,
+  active,
+  collapsed = false,
+  onToggleCollapsed,
+}: SidebarProps) {
   const router = useRouter();
   const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
   const { clearProfile: clearProfessionalProfile } = useProfessionalProfileContext();
   const rootRef = useRef<HTMLElement | null>(null);
   const { count: unreadNotificationCount } = useProfessionalNotificationUnreadCount();
+  const { isLoggingOut, logout } = useAuthLogout();
   const [canEnterAsClient, setCanEnterAsClient] = useState(false);
   const [isSwitchingContext, setIsSwitchingContext] = useState(false);
 
@@ -165,9 +172,9 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
       ref={rootRef}
       className="relative flex min-h-full flex-col overflow-x-hidden border-r border-[#E2E8F0] bg-white text-[#0F172A] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className="border-b border-[#E2E8F0] px-4 py-4">
-        <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
-          <div className="mb-2 flex items-center gap-3">
+      <div className={cn('border-b border-[#E2E8F0] py-4', collapsed ? 'px-2' : 'px-4')}>
+        <div className={cn('rounded-xl border border-[#E2E8F0] bg-white', collapsed ? 'p-2' : 'p-3')}>
+          <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'mb-2')}>
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#ECFDF5] text-xs font-semibold text-[#0F766E]">
             {resolvedLogoUrl ? (
               <Image
@@ -182,21 +189,21 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
               initials
             )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={cn('min-w-0 flex-1 transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 overflow-hidden opacity-0')}>
               <p className="truncate text-sm font-medium text-[#0F172A]">{displayName}</p>
               <p className="truncate text-xs text-[#64748B]">{displayMeta}</p>
             </div>
           </div>
-          <span className="inline-flex rounded-md bg-[#ECFDF5] px-2 py-0.5 text-xs font-medium text-[#0F766E]">
+          <span className={cn('inline-flex rounded-md bg-[#ECFDF5] px-2 py-0.5 text-xs font-medium text-[#0F766E]', collapsed && 'sr-only')}>
             {planLabel}
           </span>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className={cn('flex-1 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
         {menuSections.map((section) => (
-          <div key={section.label} className="mb-6">
-            <p className="mb-2 px-3 text-xs uppercase tracking-wider text-[#64748B]">
+          <div key={section.label} className={cn('mb-6', collapsed && 'mb-4')}>
+            <p className={cn('mb-2 px-3 text-xs uppercase tracking-wider text-[#64748B]', collapsed && 'sr-only')}>
               {section.label}
             </p>
             <div className="space-y-1">
@@ -208,6 +215,7 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                  collapsed && 'justify-center gap-0 px-2',
                   isActive && !isDisabled
                     ? 'bg-[#ECFDF5] text-[#0F766E]'
                     : isDisabled
@@ -232,15 +240,21 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
                     >
                       <DashboardIcon name={item.icon} className="h-4 w-4" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-sm', isDisabled && 'opacity-60')}>
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200',
+                        isDisabled && 'opacity-60',
+                        collapsed && 'max-w-0 opacity-0',
+                      )}
+                    >
                       {item.label}
                     </span>
-                    {item.label === 'Notificaciones' && notificationBadgeCount ? (
+                    {item.label === 'Notificaciones' && notificationBadgeCount && !collapsed ? (
                       <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-[#0F766E] px-1.5 py-0.5 text-xs leading-none text-white">
                         {notificationBadgeCount}
                       </span>
                     ) : null}
-                    {showsFeatureHint ? (
+                    {showsFeatureHint && !collapsed ? (
                       <span
                         className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"
                         title="Funcionalidad no disponible en el MVP"
@@ -261,6 +275,7 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
                       key={item.label}
                       className={itemClassName}
                       data-sidebar-active={isActive ? 'true' : 'false'}
+                      title={collapsed ? item.label : undefined}
                     >
                       {content}
                     </div>
@@ -273,6 +288,7 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
                     href={item.href}
                     className={itemClassName}
                     data-sidebar-active={isActive ? 'true' : 'false'}
+                    title={collapsed ? item.label : undefined}
                     onClick={(event) => {
                       event.preventDefault();
                       requestNavigation(item.href);
@@ -282,43 +298,80 @@ function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
                   </Link>
                 );
               })}
-              {section.label === 'Cuenta' && canEnterAsClient ? (
-                <button
-                  type="button"
-                  className="group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70"
-                  onClick={handleEnterAsClient}
-                  disabled={isSwitchingContext}
-                >
-                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
-                    <DashboardIcon name="configuracion" className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
-                  </span>
-                </button>
-              ) : null}
             </div>
           </div>
         ))}
       </nav>
 
-      {onRequestHide ? (
-        <div className="border-t border-[#E2E8F0] px-3 py-4">
+      <div className={cn('mt-auto border-t border-[#E2E8F0] py-4', collapsed ? 'px-2' : 'px-3')}>
+        <div className="space-y-1">
+          {onToggleCollapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              className={cn(
+                'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                collapsed && 'justify-center gap-0 px-2',
+              )}
+              aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+              aria-pressed={collapsed}
+              title={collapsed ? 'Expandir menú' : undefined}
+            >
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={cn('h-4 w-4 transition-transform', collapsed && 'rotate-180')}>
+                  <path d="m11 7-5 5 5 5" />
+                  <path d="m18 7-5 5 5 5" />
+                </svg>
+              </span>
+              <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+                Contraer menú
+              </span>
+            </button>
+          ) : null}
+
+          {canEnterAsClient ? (
+            <button
+              type="button"
+              className={cn(
+                'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
+                collapsed && 'justify-center gap-0 px-2',
+              )}
+              onClick={handleEnterAsClient}
+              disabled={isSwitchingContext}
+              title={collapsed ? 'Entrar como cliente' : undefined}
+            >
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
+                <DashboardIcon name="configuracion" className="h-4 w-4" />
+              </span>
+              <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+                {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
+              </span>
+            </button>
+          ) : null}
+
           <button
             type="button"
-            onClick={onRequestHide}
-            className="group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            onClick={() => void logout('PROFESSIONAL')}
+            disabled={isLoggingOut}
+            className={cn(
+              'group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
+              collapsed && 'justify-center gap-0 px-2',
+            )}
+            title={collapsed ? 'Cerrar sesión' : undefined}
           >
             <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-4 w-4">
-                <path d="m11 7-5 5 5 5" />
-                <path d="m18 7-5 5 5 5" />
+                <path d="M10 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" />
+                <path d="M14 16l4-4-4-4" />
+                <path d="M18 12H9" />
               </svg>
             </span>
-            <span className="min-w-0 flex-1 truncate text-sm">Ocultar menú</span>
+            <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+              {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+            </span>
           </button>
         </div>
-      ) : null}
+      </div>
     </aside>
   );
 }

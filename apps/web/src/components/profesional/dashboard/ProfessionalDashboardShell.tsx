@@ -7,6 +7,9 @@ import { cn } from '@/components/ui/cn';
 import { useProfessionalCoreAccessGate } from '@/hooks/useProfessionalCoreAccessGate';
 import type { ProfessionalProfile } from '@/types/professional';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'plura:professional-sidebar-collapsed';
+const LEGACY_SIDEBAR_HIDDEN_STORAGE_KEY = 'plura:professional-sidebar-hidden';
+
 type ProfessionalDashboardShellProps = {
   active: string;
   profile?: ProfessionalProfile | null;
@@ -27,18 +30,21 @@ export default function ProfessionalDashboardShell({
   maxWidthClassName = 'max-w-none',
 }: ProfessionalDashboardShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   useProfessionalCoreAccessGate();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setIsSidebarHidden(window.localStorage.getItem('plura:professional-sidebar-hidden') === 'true');
+    const storedValue = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+    const legacyHiddenValue = window.localStorage.getItem(LEGACY_SIDEBAR_HIDDEN_STORAGE_KEY);
+    setIsSidebarCollapsed(storedValue === 'true' || (storedValue === null && legacyHiddenValue === 'true'));
   }, []);
 
-  const updateSidebarHidden = (nextValue: boolean) => {
-    setIsSidebarHidden(nextValue);
+  const updateSidebarCollapsed = (nextValue: boolean) => {
+    setIsSidebarCollapsed(nextValue);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('plura:professional-sidebar-hidden', String(nextValue));
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(nextValue));
+      window.localStorage.removeItem(LEGACY_SIDEBAR_HIDDEN_STORAGE_KEY);
     }
   };
 
@@ -50,17 +56,21 @@ export default function ProfessionalDashboardShell({
       )}
     >
       <div className={cn('flex min-h-screen', containedViewport && 'lg:h-screen lg:min-h-0')}>
-        {!isSidebarHidden ? (
-          <aside className="hidden w-[244px] shrink-0 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
-            <div className="h-full overflow-y-auto overscroll-contain">
-              <ProfesionalSidebar
-                profile={profile}
-                active={active}
-                onRequestHide={() => updateSidebarHidden(true)}
-              />
-            </div>
-          </aside>
-        ) : null}
+        <aside
+          className={cn(
+            'hidden shrink-0 bg-white transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen',
+            isSidebarCollapsed ? 'w-[72px]' : 'w-[244px]',
+          )}
+        >
+          <div className="h-full overflow-y-auto overscroll-contain">
+            <ProfesionalSidebar
+              profile={profile}
+              active={active}
+              collapsed={isSidebarCollapsed}
+              onToggleCollapsed={() => updateSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          </div>
+        </aside>
 
         <div
           className={cn(
@@ -89,18 +99,6 @@ export default function ProfessionalDashboardShell({
               contentClassName,
             )}
           >
-            {isSidebarHidden ? (
-              <div className="mb-3 hidden lg:flex">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => updateSidebarHidden(false)}
-                >
-                  Mostrar menú
-                </Button>
-              </div>
-            ) : null}
             {children}
           </main>
         </div>

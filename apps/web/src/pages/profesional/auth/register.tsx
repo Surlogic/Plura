@@ -276,7 +276,6 @@ export default function ProfesionalRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
-  const [billingRecoveryAvailable, setBillingRecoveryAvailable] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
@@ -1244,7 +1243,6 @@ export default function ProfesionalRegisterPage() {
     event?.preventDefault();
     setErrorMessage(null);
     setCheckoutConfirmationMessage(null);
-    setBillingRecoveryAvailable(false);
     const allFields = Object.keys(validationErrors) as Array<keyof RegisterForm>;
     markTouched(allFields);
 
@@ -1315,7 +1313,6 @@ export default function ProfesionalRegisterPage() {
       });
 
       if (!checkout.checkoutUrl) {
-        setBillingRecoveryAvailable(true);
         setErrorMessage('No pudimos iniciar Mercado Pago. No se creó el perfil profesional; podés reintentar.');
         return;
       }
@@ -2024,7 +2021,7 @@ export default function ProfesionalRegisterPage() {
     <div className="app-shell flex h-dvh flex-col overflow-hidden bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
       <main className="mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 items-start justify-center overflow-hidden px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
-        <form className="h-full w-full" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="h-full w-full" onSubmit={(event) => event.preventDefault()}>
           <Card tone="default" padding="none" className="mx-auto flex h-full w-full max-w-[90rem] flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
             <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-3 sm:px-6 lg:px-8">
               {stepHeader}
@@ -2048,16 +2045,6 @@ export default function ProfesionalRegisterPage() {
               {errorMessage ? (
                 <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
                   <p>{errorMessage}</p>
-                  {billingRecoveryAvailable ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="mt-3"
-                      onClick={() => void handleSubmit()}
-                    >
-                      Reintentar activación
-                    </Button>
-                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -2084,7 +2071,7 @@ export default function ProfesionalRegisterPage() {
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
                     variant="primary"
                     size="lg"
                     className="w-full sm:w-auto sm:min-w-56"
@@ -2099,6 +2086,7 @@ export default function ProfesionalRegisterPage() {
                           ? 'Activando Plura Core...'
                           : 'Creando perfil...'
                     }
+                    onClick={() => void handleSubmit()}
                   >
                     Activar prueba gratuita
                   </Button>

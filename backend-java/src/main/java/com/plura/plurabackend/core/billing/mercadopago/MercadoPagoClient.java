@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +34,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class MercadoPagoClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoClient.class);
+    private static final Duration CHECKOUT_SEARCH_CLOCK_SKEW = Duration.ofMinutes(10);
+    private static final Duration CHECKOUT_SEARCH_WINDOW = Duration.ofHours(2);
 
     private final BillingProperties billingProperties;
     private final ObjectMapper objectMapper;
@@ -104,6 +107,15 @@ public class MercadoPagoClient {
         String payerEmail,
         String preapprovalPlanId
     ) {
+        return findPreapprovalByReference(externalReference, payerEmail, preapprovalPlanId, null);
+    }
+
+    public Optional<MercadoPagoPreapproval> findPreapprovalByReference(
+        String externalReference,
+        String payerEmail,
+        String preapprovalPlanId,
+        Instant checkoutIssuedAt
+    ) {
         String path = buildPreapprovalSearchPath(
             externalReference,
             externalReference == null || externalReference.isBlank() ? payerEmail : null,
@@ -124,7 +136,18 @@ public class MercadoPagoClient {
         JsonNode fallbackResults = sendSearchRequest(buildPreapprovalSearchPath(null, payerEmail, preapprovalPlanId))
             .path("results");
         strictMatch = findStrictPreapprovalMatch(fallbackResults, externalReference, payerEmail, preapprovalPlanId);
-        return strictMatch.or(() -> findUniqueConfirmedEmailPlanMatch(fallbackResults, payerEmail, preapprovalPlanId));
+        Optional<MercadoPagoPreapproval> emailPlanMatch =
+            strictMatch.or(() -> findUniqueConfirmedEmailPlanMatch(fallbackResults, payerEmail, preapprovalPlanId));
+        if (emailPlanMatch.isPresent()) {
+            return emailPlanMatch;
+        }
+
+        if (checkoutIssuedAt == null || preapprovalPlanId == null || preapprovalPlanId.isBlank()) {
+            return Optional.empty();
+        }
+        JsonNode planResults = sendSearchRequest(buildPreapprovalSearchPath(null, null, preapprovalPlanId))
+            .path("results");
+        return findUniqueConfirmedPlanMatchInCheckoutWindow(planResults, preapprovalPlanId, checkoutIssuedAt);
     }
 
     private JsonNode sendSearchRequest(String path) {
@@ -175,6 +198,29 @@ public class MercadoPagoClient {
         for (JsonNode result : results) {
             if (!matchesEmailAndPlan(result, payerEmail, preapprovalPlanId)
                 || !isConfirmedPreapprovalStatus(textValue(result, "status"))) {
+                continue;
+            }
+            if (match != null) {
+                return Optional.empty();
+            }
+            match = toPreapproval(result, false);
+        }
+        return Optional.ofNullable(match);
+    }
+
+    private Optional<MercadoPagoPreapproval> findUniqueConfirmedPlanMatchInCheckoutWindow(
+        JsonNode results,
+        String preapprovalPlanId,
+        Instant checkoutIssuedAt
+    ) {
+        if (!results.isArray()) {
+            return Optional.empty();
+        }
+        MercadoPagoPreapproval match = null;
+        for (JsonNode result : results) {
+            if (!matchesEmailAndPlan(result, null, preapprovalPlanId)
+                || !isConfirmedPreapprovalStatus(textValue(result, "status"))
+                || !isInsideCheckoutWindow(result, checkoutIssuedAt)) {
                 continue;
             }
             if (match != null) {
@@ -353,6 +399,24 @@ public class MercadoPagoClient {
         }
     }
 
+    private Instant parseInstant(String rawValue) {
+        OffsetDateTime offsetDateTime = parseOffsetDateTime(rawValue);
+        return offsetDateTime == null ? null : offsetDateTime.toInstant();
+    }
+
+    private boolean isInsideCheckoutWindow(JsonNode result, Instant checkoutIssuedAt) {
+        Instant candidateDate = parseInstant(firstNonBlank(
+            textValue(result, "date_created"),
+            textValue(result, "last_modified")
+        ));
+        if (candidateDate == null || checkoutIssuedAt == null) {
+            return false;
+        }
+        Instant lowerBound = checkoutIssuedAt.minus(CHECKOUT_SEARCH_CLOCK_SKEW);
+        Instant upperBound = checkoutIssuedAt.plus(CHECKOUT_SEARCH_WINDOW);
+        return !candidateDate.isBefore(lowerBound) && !candidateDate.isAfter(upperBound);
+    }
+
     /**
      * Convierte datos internos al formato preapproval esperado por el consumidor.
      */
@@ -395,7 +459,9 @@ public class MercadoPagoClient {
             textValue(response, "payer_email"),
             textValue(response, "reason"),
             textValue(response, "preapproval_plan_id"),
-            textValue(response, "external_reference")
+            textValue(response, "external_reference"),
+            parseInstant(textValue(response, "date_created")),
+            parseInstant(textValue(response, "last_modified"))
         );
     }
 
@@ -584,6 +650,8 @@ public class MercadoPagoClient {
         String payerEmail,
         String reason,
         String preapprovalPlanId,
-        String externalReference
+        String externalReference,
+        Instant dateCreated,
+        Instant lastModified
     ) {}
 }

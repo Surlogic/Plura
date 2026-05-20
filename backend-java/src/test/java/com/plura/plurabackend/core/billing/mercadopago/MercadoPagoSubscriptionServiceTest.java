@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -70,7 +71,9 @@ class MercadoPagoSubscriptionServiceTest {
                 "pro@test.com",
                 "Plura PLAN_CORE",
                 "plan-core",
-                "subscription:30"
+                "subscription:30",
+                null,
+                null
             ));
         MercadoPagoSubscriptionService service = new MercadoPagoSubscriptionService(properties, client);
 
@@ -184,6 +187,35 @@ class MercadoPagoSubscriptionServiceTest {
         }
     }
 
+    @Test
+    void findsRecentUniquePreapprovalByPlanWhenReferenceAndEmailWereNotPreserved() throws Exception {
+        AtomicReference<String> firstQuery = new AtomicReference<>();
+        AtomicReference<String> secondQuery = new AtomicReference<>();
+        AtomicReference<String> thirdQuery = new AtomicReference<>();
+        HttpServer server = startMercadoPagoPlanOnlyStub(firstQuery, secondQuery, thirdQuery);
+        try {
+            BillingProperties properties = new BillingProperties();
+            properties.getMercadopago().setEnabled(true);
+            properties.getMercadopago().setBaseUrl("http://localhost:" + server.getAddress().getPort());
+            MercadoPagoClient client = new MercadoPagoClient(properties, new ObjectMapper());
+
+            Optional<MercadoPagoClient.MercadoPagoPreapproval> found = client.findPreapprovalByReference(
+                "professional-registration:missing-reference",
+                "wizard@test.com",
+                "plan-core",
+                Instant.parse("2026-05-20T02:54:06Z")
+            );
+
+            assertTrue(found.isPresent());
+            assertEquals("preapproval-plan-only", found.get().id());
+            assertTrue(firstQuery.get().contains("q=professional-registration%3Amissing-reference"));
+            assertTrue(secondQuery.get().contains("payer_email=wizard%40test.com"));
+            assertEquals("preapproval_plan_id=plan-core", thirdQuery.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private HttpServer startMercadoPagoStub(
         AtomicReference<String> firstQuery,
         AtomicReference<String> secondQuery
@@ -219,6 +251,36 @@ class MercadoPagoSubscriptionServiceTest {
             String response = """
                 {"paging":{"total":1},"results":[{"id":"preapproval-reference","preapproval_plan_id":"plan-core","payer_email":"mercadopago@test.com","status":"authorized","external_reference":"professional-registration:kept-reference","auto_recurring":{"transaction_amount":"990","currency_id":"UYU"}}]}
                 """;
+            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+        return server;
+    }
+
+    private HttpServer startMercadoPagoPlanOnlyStub(
+        AtomicReference<String> firstQuery,
+        AtomicReference<String> secondQuery,
+        AtomicReference<String> thirdQuery
+    ) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/preapproval/search", exchange -> {
+            String query = exchange.getRequestURI().getRawQuery();
+            String response;
+            if (firstQuery.get() == null) {
+                firstQuery.set(query);
+                response = "{\"paging\":{\"total\":0},\"results\":[]}";
+            } else if (secondQuery.get() == null) {
+                secondQuery.set(query);
+                response = "{\"paging\":{\"total\":0},\"results\":[]}";
+            } else {
+                thirdQuery.set(query);
+                response = """
+                    {"paging":{"total":1},"results":[{"id":"preapproval-plan-only","preapproval_plan_id":"plan-core","payer_email":"other@test.com","status":"authorized","external_reference":null,"date_created":"2026-05-20T02:55:10.000Z","auto_recurring":{"transaction_amount":"990","currency_id":"UYU"}}]}
+                    """;
+            }
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);

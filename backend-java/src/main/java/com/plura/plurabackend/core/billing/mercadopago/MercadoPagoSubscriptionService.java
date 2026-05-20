@@ -5,6 +5,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanC
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -102,7 +103,21 @@ public class MercadoPagoSubscriptionService {
         String payerEmail,
         String preapprovalPlanId
     ) {
-        return mercadoPagoClient.findPreapprovalByReference(registrationReference, payerEmail, preapprovalPlanId)
+        return findSubscriptionByRegistrationReference(registrationReference, payerEmail, preapprovalPlanId, null);
+    }
+
+    public Optional<SubscriptionSnapshot> findSubscriptionByRegistrationReference(
+        String registrationReference,
+        String payerEmail,
+        String preapprovalPlanId,
+        Instant checkoutIssuedAt
+    ) {
+        return mercadoPagoClient.findPreapprovalByReference(
+                registrationReference,
+                payerEmail,
+                preapprovalPlanId,
+                checkoutIssuedAt
+            )
             .map(this::toSnapshot);
     }
 
@@ -125,7 +140,9 @@ public class MercadoPagoSubscriptionService {
             preapproval.payerEmail(),
             preapproval.reason(),
             preapproval.preapprovalPlanId(),
-            preapproval.externalReference()
+            preapproval.externalReference(),
+            preapproval.dateCreated(),
+            preapproval.lastModified()
         );
     }
 
@@ -327,7 +344,9 @@ public class MercadoPagoSubscriptionService {
         String payerEmail,
         String reason,
         String preapprovalPlanId,
-        String externalReference
+        String externalReference,
+        Instant dateCreated,
+        Instant lastModified
     ) {}
 
     /**

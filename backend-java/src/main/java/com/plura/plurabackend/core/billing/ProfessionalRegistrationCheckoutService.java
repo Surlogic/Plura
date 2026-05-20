@@ -306,7 +306,8 @@ public class ProfessionalRegistrationCheckoutService {
                 hasText(registrationReference) ? registrationReference.trim() : null,
                 hasText(preapprovalPlanId) ? preapprovalPlanId.trim() : null,
                 email,
-                plan
+                plan,
+                decoded.getIssuedAt() == null ? null : decoded.getIssuedAt().toInstant()
             );
         } catch (JWTVerificationException | IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checkoutToken inválido");
@@ -347,7 +348,8 @@ public class ProfessionalRegistrationCheckoutService {
             .findSubscriptionByRegistrationReference(
                 token.registrationReference(),
                 token.email(),
-                token.preapprovalPlanId()
+                token.preapprovalPlanId(),
+                token.issuedAt()
             )
             .orElse(null);
     }
@@ -432,6 +434,7 @@ public class ProfessionalRegistrationCheckoutService {
         String registrationReference,
         String preapprovalPlanId,
         String email,
-        SubscriptionPlanCode plan
+        SubscriptionPlanCode plan,
+        Instant issuedAt
     ) {}
 }

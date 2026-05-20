@@ -1392,7 +1392,7 @@ export default function ProfesionalRegisterPage() {
       window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
     }
     await refreshProfile();
-    await router.push('/profesional/dashboard/billing');
+    await router.push('/profesional/auth/bienvenido');
   };
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {

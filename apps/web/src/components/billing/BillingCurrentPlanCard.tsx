@@ -61,7 +61,7 @@ function BillingCurrentPlanCard({
               {plan.label}
             </h2>
             <p className="mt-2 text-sm text-[#64748B]">
-              Suscripcion unica para operar reservas, agenda, pagina publica, servicios y dashboard.
+              Suscripción para gestionar reservas, agenda, página pública, servicios y dashboard.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ function BillingCurrentPlanCard({
 
           <div className="mt-5">
             <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-              Core activo
+              Herramientas activas
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {capabilities.length > 0 ? (
@@ -96,7 +96,7 @@ function BillingCurrentPlanCard({
                 ))
               ) : (
                 <span className="text-sm text-[#64748B]">
-                  Plura Core mantiene activos los modulos operativos del MVP.
+                  Tu suscripción mantiene activas las herramientas operativas principales.
                 </span>
               )}
             </div>

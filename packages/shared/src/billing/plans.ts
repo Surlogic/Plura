@@ -17,7 +17,7 @@ export type SharedBillingPlanDefinition = {
 export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   {
     id: 'CORE',
-    label: 'Plura Core',
+    label: 'Suscripción Plura',
     backendPlanCode: 'PLAN_CORE',
     profilePlanCode: 'CORE',
     priceMonthly: 590,

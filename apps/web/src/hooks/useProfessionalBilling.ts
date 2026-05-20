@@ -62,7 +62,7 @@ const buildPendingCheckoutBanner = (hasPendingCheckout: boolean): BillingBannerS
   title: 'Activacion pendiente',
   description: hasPendingCheckout
     ? 'Termina la autorizacion en Mercado Pago para activar la prueba gratuita.'
-    : 'La activacion de Core todavia no fue confirmada. Puedes volver a verificar el estado.',
+    : 'La activacion de la suscripcion todavia no fue confirmada. Puedes volver a verificar el estado.',
 });
 
 // --- Consolidated UI state via useReducer ---
@@ -122,7 +122,7 @@ function billingUiReducer(state: BillingUiState, action: BillingUiAction): Billi
       return {
         ...state,
         isRedirectingToCheckout: true,
-        banner: { tone: 'loading', title: 'Redirigiendo a Mercado Pago...', description: 'Te llevamos a autorizar Plura Core.' },
+        banner: { tone: 'loading', title: 'Redirigiendo a Mercado Pago...', description: 'Te llevamos a autorizar la suscripcion.' },
       };
     case 'CHECKOUT_REDIRECT_FAIL':
       return { ...state, isRedirectingToCheckout: false, banner: action.banner };
@@ -296,8 +296,8 @@ export function useProfessionalBilling({
       dispatch({
         type: 'SET_BANNER',
         banner: nextSubscription.status === 'TRIALING'
-          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' }
-          : { tone: 'success', title: 'Suscripcion activada', description: 'Plura Core ya esta disponible en el dashboard.' },
+          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Tu suscripcion ya esta disponible en el dashboard.' }
+          : { tone: 'success', title: 'Suscripcion activada', description: 'Tu suscripcion ya esta disponible en el dashboard.' },
       });
       await applyPendingProfessionalRegisterHandoff();
       await refreshProfessionalCaches(refreshProfileRef.current);
@@ -309,7 +309,7 @@ export function useProfessionalBilling({
       stopPollingCheckout();
       dispatch({
         type: 'SET_BANNER',
-        banner: { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' },
+        banner: { tone: 'success', title: 'Prueba gratuita activa', description: 'Tu suscripcion ya esta disponible en el dashboard.' },
       });
       await applyPendingProfessionalRegisterHandoff();
       await refreshProfessionalCaches(refreshProfileRef.current);
@@ -340,7 +340,7 @@ export function useProfessionalBilling({
           stopPollingCheckout();
           dispatch({
             type: 'SET_BANNER',
-            banner: { tone: 'info', title: 'Activacion Core sin confirmar', description: 'Todavia no vimos la autorizacion confirmada. Puedes volver a verificar el estado.' },
+            banner: { tone: 'info', title: 'Activacion sin confirmar', description: 'Todavia no vimos la autorizacion confirmada. Puedes volver a verificar el estado.' },
           });
         }
         return;
@@ -352,8 +352,8 @@ export function useProfessionalBilling({
           tone: source === 'manual' ? 'info' : 'loading',
           title: source === 'manual' ? 'Seguimos validando la activacion' : 'Procesando activacion...',
           description: source === 'manual'
-            ? 'Todavia no vemos Core confirmado. Puedes volver a revisar en unos minutos.'
-            : 'Estamos esperando la confirmacion de Plura Core.',
+            ? 'Todavia no vemos la suscripcion confirmada. Puedes volver a revisar en unos minutos.'
+            : 'Estamos esperando la confirmacion de la suscripcion.',
         },
       });
       return;
@@ -373,7 +373,7 @@ export function useProfessionalBilling({
       clearPendingCheckout();
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
-        banner: { tone: 'warning', title: 'Suscripcion cancelada', description: 'La suscripcion Core fue cancelada. Puedes seguir navegando y revisar el estado mas adelante.' },
+        banner: { tone: 'warning', title: 'Suscripcion cancelada', description: 'La suscripcion fue cancelada. Puedes seguir navegando y revisar el estado mas adelante.' },
       });
       stopPolling();
       return;
@@ -383,7 +383,7 @@ export function useProfessionalBilling({
       clearPendingCheckout();
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
-        banner: { tone: 'warning', title: 'Prueba vencida', description: 'La prueba de Plura Core vencio. Puedes reintentar la activacion desde Facturacion.' },
+        banner: { tone: 'warning', title: 'Prueba vencida', description: 'La prueba vencio. Puedes reintentar la activacion desde Facturacion.' },
       });
       stopPolling();
     }
@@ -601,8 +601,8 @@ export function useProfessionalBilling({
         type: 'SET_BANNER',
         banner: {
           tone: 'info',
-          title: 'Plura Core es la suscripcion disponible',
-          description: 'Los cambios de suscripcion no estan disponibles durante el MVP.',
+          title: 'La suscripcion de Plura ya esta seleccionada',
+          description: 'Los cambios de suscripcion no estan disponibles por ahora.',
         },
       });
       return;
@@ -631,15 +631,15 @@ export function useProfessionalBilling({
       dispatch({
         type: 'SET_BANNER',
         banner: checkout.status === 'TRIALING' || checkout.status === 'TRIAL'
-          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' }
-          : { tone: 'success', title: 'Core actualizado', description: 'Actualizamos el estado de tu suscripcion.' },
+          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Tu suscripcion ya esta disponible en el dashboard.' }
+          : { tone: 'success', title: 'Suscripcion actualizada', description: 'Actualizamos el estado de tu suscripcion.' },
       });
     } catch (error) {
       dispatch({
         type: 'CHECKOUT_REDIRECT_FAIL',
         banner: {
           tone: 'error',
-          title: 'No pudimos activar Plura Core',
+          title: 'No pudimos activar la suscripcion',
           description: resolveBackendMessage(error, 'Podes volver a intentarlo desde Facturacion.'),
         },
       });

@@ -300,7 +300,7 @@ const wizardSteps = [
   'Atención',
   'Ubicación',
   'Horarios',
-  'Core',
+  'Suscripción',
 ] as const;
 
 const initialSchedule: ScheduleDay[] = [
@@ -533,7 +533,7 @@ export default function ProfesionalRegisterPage() {
         }
 
         if (!pending) {
-          setErrorMessage('Mercado Pago confirmó Core, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
+          setErrorMessage('Mercado Pago confirmó la suscripción, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
           return;
         }
 
@@ -1386,7 +1386,7 @@ export default function ProfesionalRegisterPage() {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
       }
-      setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
+      setErrorMessage('La suscripción quedó activa, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
       try {
         await refreshProfile();
       } catch {
@@ -1564,14 +1564,14 @@ export default function ProfesionalRegisterPage() {
       const confirmedCheckoutToken = verification.checkoutToken || checkoutAction.checkoutToken;
       if (!confirmedCheckoutToken) {
         setPendingCheckoutAction(nextAction);
-        setErrorMessage('Mercado Pago confirmó Core, pero no recibimos una credencial válida para crear el perfil. Reintentá la verificación.');
+        setErrorMessage('Mercado Pago confirmó la suscripción, pero no recibimos una credencial válida para crear el perfil. Reintentá la verificación.');
         return;
       }
 
       const pending = readPendingCheckoutRegistration();
       if (!pending) {
         setPendingCheckoutAction(null);
-        setErrorMessage('Mercado Pago confirmó Core, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
+        setErrorMessage('Mercado Pago confirmó la suscripción, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
         return;
       }
 
@@ -1598,7 +1598,7 @@ export default function ProfesionalRegisterPage() {
   const stepHeader = (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-2 text-center">
       <span className="text-sm font-semibold text-[color:var(--ink)]">
-        {step >= wizardSteps.length - 1 ? 'Activar Plura Core' : `Paso ${visibleStepNumber} de ${wizardSteps.length}`}
+        {step >= wizardSteps.length - 1 ? 'Activar suscripción' : `Paso ${visibleStepNumber} de ${wizardSteps.length}`}
       </span>
       <div className="flex items-center gap-3" aria-label="Progreso del registro profesional">
         {wizardSteps.map((item, index) => (
@@ -2208,27 +2208,22 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderPreviewStep = () => (
-    <div className="mx-auto w-full max-w-[88rem] space-y-5">
+    <div className="mx-auto w-full max-w-5xl space-y-5">
       <div className="space-y-2">
-        <Badge variant="success">30 días gratis</Badge>
-        <h1 className={wizardTitleClassName}>Activá Plura Core</h1>
+        <Badge variant="success">Prueba gratuita</Badge>
+        <h1 className={wizardTitleClassName}>Activá tu suscripción</h1>
         <p className="max-w-3xl text-base text-[color:var(--ink-muted)]">
-          Tu perfil queda listo para publicarse. Tenés 30 días gratis para probar Plura Core.
-          Luego continúa la suscripción mensual.
+          Tu perfil queda listo para publicarse. Tenés un período de prueba gratuito y luego continúa la suscripción mensual.
         </p>
       </div>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)]">
-        <div className="space-y-4 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--primary)]">Plura Core</p>
-          <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Incluye la operación base del MVP</h2>
-          <ul className="space-y-3 text-sm leading-6 text-[color:var(--ink-muted)]">
-            <li>Marketplace, agenda, servicios, reservas y perfil público.</li>
-            <li>Perfil público con logo, banner, descripción y fotos.</li>
-            <li>Pagos online con Mercado Pago cuando completes la autorización.</li>
-            <li>Mercado Pago puede pedirte autorizar el medio de pago para mantener Core al finalizar la prueba.</li>
-          </ul>
-        </div>
-        <ProfilePreviewCard />
+      <div className="space-y-4 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 shadow-[var(--shadow-card)]">
+        <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Qué incluye</h2>
+        <ul className="grid gap-3 text-sm leading-6 text-[color:var(--ink-muted)] sm:grid-cols-2">
+          <li>Publicá tu perfil en Plura</li>
+          <li>Gestioná agenda, horarios, servicios y reservas</li>
+          <li>Recibí solicitudes y notificaciones</li>
+          <li>Configurá cobros online cuando estén disponibles para tu cuenta</li>
+        </ul>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
@@ -2368,7 +2363,7 @@ export default function ProfesionalRegisterPage() {
                     : checkoutConfirmationMessage
                       ? checkoutConfirmationMessage
                     : isOAuthSetup
-                      ? 'Activando Plura Core...'
+                      ? 'Activando prueba gratuita...'
                       : 'Creando perfil...'
                 }
                 onClick={() => void handleSubmit()}

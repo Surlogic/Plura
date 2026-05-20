@@ -117,8 +117,8 @@ export default function ProfesionalBillingPage() {
       <div className="space-y-6">
               <DashboardPageHeader
                 eyebrow="Facturación"
-                title="Suscripción Core y cobros"
-                description="Plura Core es la suscripción única del MVP para operar reservas, agenda, página pública y dashboard."
+                title="Suscripción y cobros"
+                description="Gestioná el estado de tu suscripción y la conexión de cobros online."
                 meta={
                   <>
                     <DashboardHeaderBadge tone="accent">
@@ -180,16 +180,16 @@ export default function ProfesionalBillingPage() {
                 <div className="space-y-8">
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <DashboardStatCard
-                      label="Plan actual"
+                      label="Suscripción actual"
                       value={currentPlan.label}
-                      detail="Suscripción única del MVP"
+                      detail="Acceso mensual a Plura"
                       icon="plan"
                       tone="accent"
                     />
                     <DashboardStatCard
                       label="Suscripción"
                       value={currentStatusLabel}
-                      detail={subscription?.cancelAtPeriodEnd ? 'Cancelación al fin del período' : 'Estado comercial de Core'}
+                      detail={subscription?.cancelAtPeriodEnd ? 'Cancelación al fin del período' : 'Estado de tu suscripción'}
                       icon={hasValidCoreAccess || currentStatus === 'NONE' ? 'spark' : 'warning'}
                       tone={hasValidCoreAccess || currentStatus === 'NONE' ? 'default' : 'warm'}
                     />
@@ -211,8 +211,8 @@ export default function ProfesionalBillingPage() {
 
                   <section ref={planDetailsRef} className="space-y-4">
                     <DashboardSectionHeading
-                      title="Mi plan de Plura"
-                      description="Core concentra la operación inicial de Plura. No hay niveles ni cambios de plan visibles en el MVP."
+                      title="Mi suscripción de Plura"
+                      description="Tu suscripción mantiene activas las herramientas principales de operación."
                     />
 
                     <BillingCurrentPlanCard
@@ -238,10 +238,10 @@ export default function ProfesionalBillingPage() {
                         <p className="font-semibold">Prueba gratuita activa</p>
                         <p className="mt-2">Finaliza: {formatBillingDate(subscription?.trialEndAt)}</p>
                         <p className="mt-1">Dias restantes: {subscription?.trialDaysRemaining ?? 'No disponible'}</p>
-                        <p className="mt-1">Luego: suscripcion mensual de Plura Core.</p>
+                        <p className="mt-1">Luego: suscripción mensual de Plura.</p>
                         {subscription?.paymentMethodAttached === false ? (
                           <p className="mt-3 rounded-[14px] border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[#B45309]">
-                            Falta autorizar el medio de pago para mantener Plura Core al finalizar la prueba.
+                            Falta autorizar el medio de pago para mantener la suscripción al finalizar la prueba.
                           </p>
                         ) : null}
                       </div>
@@ -268,7 +268,7 @@ export default function ProfesionalBillingPage() {
                     {showExpired ? (
                       <div className="rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] p-5 text-sm text-[#991B1B]">
                         <p className="font-semibold">Prueba vencida</p>
-                        <p className="mt-2">Activa Plura Core para mantener la suscripcion mensual.</p>
+                        <p className="mt-2">Activá la suscripción para mantener el acceso mensual.</p>
                         <Button
                           type="button"
                           variant="primary"
@@ -276,7 +276,7 @@ export default function ProfesionalBillingPage() {
                           onClick={handleActivateCore}
                           disabled={isRedirectingToCheckout}
                         >
-                          {isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago...' : 'Activar Plura Core'}
+                          {isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago...' : 'Activar suscripción'}
                         </Button>
                       </div>
                     ) : null}
@@ -286,8 +286,8 @@ export default function ProfesionalBillingPage() {
                     <DashboardSectionHeading
                       title="Cobros de reservas con Mercado Pago"
                       description={canUseOnlinePayments
-                        ? 'Conectá la cuenta del profesional para cobrar reservas online. Esto no cambia tu suscripción Core.'
-                        : 'Cobros online queda como extra no disponible en el MVP para esta cuenta.'}
+                        ? 'Conectá la cuenta del profesional para cobrar reservas online. Esto no cambia tu suscripción.'
+                        : 'Cobros online todavía no está disponible para esta cuenta.'}
                     />
 
                     {canUseOnlinePayments ? (

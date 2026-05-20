@@ -552,6 +552,7 @@ export default function ProfesionalRegisterPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
+    if (hasQueryFlag(router.query.billingReturn)) return;
     let isActive = true;
     void fetchAuthMe()
       .then((me) => {
@@ -1392,7 +1393,7 @@ export default function ProfesionalRegisterPage() {
       window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
     }
     await refreshProfile();
-    await router.push('/profesional/auth/bienvenido');
+    await router.push('/profesional/dashboard');
   };
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {

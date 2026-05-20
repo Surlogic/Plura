@@ -169,7 +169,7 @@ Variables de backend para suscripcion Core:
 - `BILLING_CORE_CURRENCY`
 - `BILLING_MERCADOPAGO_PLAN_CORE_ID`
 
-Estas variables son las unicas variables operativas de plan/suscripcion Core. Deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido. `BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL` debe apuntar a `/profesional/auth/register` en el origen web publico y se usa como origen permitido para armar el retorno `billingReturn=1&checkoutRef=...` del checkout profesional.
+Estas variables son las unicas variables operativas de plan/suscripcion Core. Deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido. `BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL` debe apuntar a `/profesional/auth/register` en el origen web publico y se usa como origen permitido para armar el retorno `billingReturn=1&checkoutRef=...` del checkout profesional. En suscripciones Mercado Pago `preapproval`/`preapproval_plan` el retorno disponible es `back_url`; el `auto_return` documentado para Checkout Pro/preferences no aplica a este payload, por lo que Plura confirma la activacion al volver con `billingReturn=1` y conserva el fallback manual del boton de Mercado Pago.
 
 Variables legacy removidas como fallback de configuracion:
 

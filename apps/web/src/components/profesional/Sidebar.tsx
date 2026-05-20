@@ -49,17 +49,11 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    label: 'Presencia pública',
+    label: 'Negocio',
     items: [
       {
-        label: 'Perfil del negocio',
-        href: '/profesional/dashboard/perfil-negocio',
-        icon: 'negocio',
-        featureKey: 'enhancedPublicProfile',
-      },
-      {
-        label: 'Página pública',
-        href: '/profesional/dashboard/pagina-publica',
+        label: 'Presencia pública',
+        href: '/profesional/dashboard/presencia-publica',
         icon: 'publica',
         featureKey: 'enhancedPublicProfile',
       },

@@ -184,6 +184,7 @@ public class SearchNativeRepository {
                 + ") AS local_score "
                 + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
                 + "WHERE 1 = 1 "
+                + activeServiceDocumentClause("doc")
                 + professionalLocationClause
                 + "AND (:queryBlank = true OR ("
                 + "  doc.name_normalized % :queryNormalized "
@@ -301,7 +302,8 @@ public class SearchNativeRepository {
                 + "doc.fallback_photo_url AS fallback_photo_url, "
                 + "doc.location_text AS location_text "
                 + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
-                + "WHERE doc.professional_id IN (:ids)";
+                + "WHERE doc.professional_id IN (:ids) "
+                + activeServiceDocumentClause("doc");
 
         List<SearchItemResponse> rawItems = jdbcTemplate.query(sql, params, SEARCH_ROW_MAPPER);
         Map<Long, SearchItemResponse> byId = new HashMap<>();
@@ -328,6 +330,7 @@ public class SearchNativeRepository {
      */
     private String buildSearchWhereClause(String dateMatchExpression, String availableNowMatchExpression) {
         return " WHERE 1 = 1 "
+            + activeServiceDocumentClause("doc")
             + " AND (:categorySlug = '' OR doc.category_slugs::text[] @> ARRAY[:categorySlug]::text[] OR doc.rubro_slug = :categorySlug) "
             + buildLocationClause("doc")
             + " AND (:dateFilter = false OR " + dateMatchExpression + ") "
@@ -381,6 +384,10 @@ public class SearchNativeRepository {
             + "   OR doc.category_slugs::text[] @> ARRAY[:querySlug]::text[] "
             + "   OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
             + " ))";
+    }
+
+    private String activeServiceDocumentClause(String alias) {
+        return " AND cardinality(COALESCE(" + alias + ".service_names, ARRAY[]::text[])) > 0 ";
     }
 
     /**

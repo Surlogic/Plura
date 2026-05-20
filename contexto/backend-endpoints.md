@@ -93,8 +93,8 @@ Lectura de producto:
 
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad de perfiles en `Plura Core`
-- `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
-- dentro de `GET /api/home`, cada categoria ahora incluye `professionalsCount` con la cantidad de profesionales activos asociados (0 cuando no hay)
+- `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales publicables, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses. Para superficies publicas, profesional publicable significa `ProfessionalProfile.active=true` y al menos un servicio activo.
+- dentro de `GET /api/home`, cada categoria ahora incluye `professionalsCount` con la cantidad de profesionales activos asociados con al menos un servicio activo (0 cuando no hay)
 - `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
 - estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 
@@ -217,6 +217,7 @@ El backend soporta:
 - `GET /api/search` sigue devolviendo perfiles/locales como entidad principal del marketplace aunque el match venga por servicio o rubro; el `name`, `professionalName` y `businessName` del item salen de `display_name`, mientras `headline` queda separado y no debe usarse como titulo principal de cards o markers
 - `GET /api/search` ahora expone `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl` por resultado; `coverImageUrl` se conserva por compatibilidad pero ya prioriza `banner`, luego foto real del negocio (`LOCAL/WORK`) y solo al final imagen de servicio como fallback extremo
 - `GET /api/search` ahora también expone `resultKind` (`LOCAL` o `PROFESIONAL`), `professionalName` y `businessName` por item para que frontend distinga si debe priorizar identidad de local o perfil sin inventarlo client-side
+- `GET /api/search`, `GET /api/search/suggest` y la hidratacion de resultados indexados no deben exponer perfiles profesionales sin al menos un servicio activo, aunque el perfil siga activo internamente.
 
 Lectura de producto:
 

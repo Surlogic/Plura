@@ -1,4 +1,75 @@
-import api from '@/services/api';
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const DEFAULT_INTERNAL_OPS_API_URL =
+  (process.env.NEXT_PUBLIC_INTERNAL_OPS_API_URL || PUBLIC_API_URL).trim();
+
+type InternalOpsAccess = {
+  baseUrl: string;
+  token: string;
+};
+
+let internalOpsAccess: InternalOpsAccess = {
+  baseUrl: '',
+  token: '',
+};
+
+const normalizeBaseUrl = (value: string) => value.trim().replace(/\/+$/, '');
+
+const getOrigin = (value: string) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return '';
+  }
+};
+
+const getConfiguredAllowedOrigins = () =>
+  (process.env.NEXT_PUBLIC_INTERNAL_OPS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map(getOrigin)
+    .filter(Boolean);
+
+const getAllowedInternalOpsOrigins = () =>
+  new Set(
+    [
+      getOrigin(PUBLIC_API_URL),
+      getOrigin(DEFAULT_INTERNAL_OPS_API_URL),
+      ...getConfiguredAllowedOrigins(),
+    ].filter(Boolean),
+  );
+
+export const getDefaultInternalOpsBaseUrl = () => normalizeBaseUrl(DEFAULT_INTERNAL_OPS_API_URL);
+
+export const isInternalOpsOriginAllowed = (baseUrl: string) => {
+  const origin = getOrigin(baseUrl);
+  return Boolean(origin && getAllowedInternalOpsOrigins().has(origin));
+};
+
+export const configureInternalOpsAccess = ({ baseUrl, token }: InternalOpsAccess) => {
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  const normalizedToken = token.trim();
+  if (!normalizedBaseUrl || !normalizedToken) {
+    throw new Error('Configura URL base y token interno primero.');
+  }
+  if (!isInternalOpsOriginAllowed(normalizedBaseUrl)) {
+    throw new Error('URL interna no permitida por configuracion del frontend.');
+  }
+  internalOpsAccess = {
+    baseUrl: normalizedBaseUrl,
+    token: normalizedToken,
+  };
+};
+
+export const clearInternalOpsAccess = () => {
+  internalOpsAccess = {
+    baseUrl: '',
+    token: '',
+  };
+};
+
+export const hasInternalOpsAccess = () =>
+  Boolean(internalOpsAccess.baseUrl && internalOpsAccess.token);
 
 type InternalFeedbackListItem = {
   id: number;
@@ -36,24 +107,17 @@ type InternalFeedbackListPage = {
   empty: boolean;
 };
 
-const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('plura_ops_api_url') || '';
-  }
-  return '';
-};
+const getBaseUrl = () => internalOpsAccess.baseUrl;
 
-const getToken = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('plura_ops_token') || '';
-  }
-  return '';
-};
+const getToken = () => internalOpsAccess.token;
 
 const opsFetch = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const baseUrl = getBaseUrl();
   const token = getToken();
   if (!baseUrl || !token) throw new Error('Configurá URL base y token interno primero.');
+  if (!isInternalOpsOriginAllowed(baseUrl)) {
+    throw new Error('URL interna no permitida por configuracion del frontend.');
+  }
   const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {

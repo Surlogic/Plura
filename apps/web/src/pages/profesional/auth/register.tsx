@@ -1836,8 +1836,8 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderCategoriesStep = () => (
-    <div className="mx-auto w-full max-w-[88rem] space-y-5 text-center">
-      <div className="space-y-2">
+    <div className="mx-auto w-full max-w-[88rem] space-y-4 text-center lg:space-y-3">
+      <div className="space-y-1.5">
         <Badge variant="success">Registro</Badge>
         <h1 className={wizardTitleClassName}>Elegí tus rubros principales</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Seleccioná hasta 5 rubros. Después vas a poder cambiarlos.</p>
@@ -1849,14 +1849,14 @@ export default function ProfesionalRegisterPage() {
         onChange={(event) => setCategorySearch(event.target.value)}
       />
       <div className="text-left">
-        <p className="mb-3 text-sm font-semibold text-[color:var(--ink)]">Seleccionados</p>
-        <div className="flex min-h-12 flex-wrap gap-3">
+        <p className="mb-2 text-sm font-semibold text-[color:var(--ink)]">Seleccionados</p>
+        <div className="flex min-h-9 flex-wrap gap-2.5">
           {selectedCategoryNames.length > 0 ? selectedCategoryNames.map((name, index) => (
             <button
               key={name}
               type="button"
               onClick={() => toggleCategory(form.categorySlugs[index])}
-              className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--primary)]"
+              className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-3 py-1.5 text-sm font-semibold text-[color:var(--primary)]"
             >
               {name} ×
             </button>
@@ -1866,7 +1866,7 @@ export default function ProfesionalRegisterPage() {
         </div>
         {renderError('categorySlugs')}
       </div>
-      <div className="border-t border-[color:var(--border-soft)] pb-2 pt-6">
+      <div className="border-t border-[color:var(--border-soft)] pb-2 pt-4 lg:pt-3">
         {categoriesLoading ? (
           <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
         ) : null}
@@ -1878,7 +1878,7 @@ export default function ProfesionalRegisterPage() {
                 key={category.id}
                 type="button"
                 onClick={() => toggleCategory(category.slug)}
-                className={`min-h-12 rounded-[18px] border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${
+                className={`min-h-11 rounded-[18px] border px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-0.5 ${
                   selected
                     ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary)] shadow-[var(--shadow-card)]'
                     : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
@@ -2276,7 +2276,7 @@ export default function ProfesionalRegisterPage() {
         </div>
 
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[96rem] px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[96rem] px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32 lg:px-8 lg:py-5">
             <div className="space-y-5">
               {renderCurrentStep()}
 

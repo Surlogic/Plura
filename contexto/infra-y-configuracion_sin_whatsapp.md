@@ -42,7 +42,7 @@ Lectura operativa actual:
 - `auth_refresh_token` queda como compatibilidad legacy del modelo anterior, pero el fallback por default ya no viene habilitado en `application.yml`
 - el access token JWT usa `ctx` como fuente del contexto activo (`CLIENT`, `PROFESSIONAL`, `WORKER`); `auth_session` persiste `active_context_type`, `active_professional_id` y `active_worker_id` para que `POST /auth/refresh` conserve el contexto elegido aunque el request no traiga un access token usable, siempre que el contexto siga disponible
 - en web, el interceptor de refresh y los providers de perfil ya no degradan cualquier error a logout: solo `401/403` invalidan la sesion; errores de red, timeout o `5xx` quedan como fallas transitorias sin limpiar credenciales locales
-- `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT`, `PROFESSIONAL` o `WORKER`) para bootstrap de sesion en rutas publicas; deriva primero `ctx` del access token y solo usa `role` como fallback legacy
+- `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT`, `PROFESSIONAL` o `WORKER`) para bootstrap de sesion en rutas publicas; deriva primero `ctx` del access token en memoria y solo usa `role` como fallback legacy. El access token web no se guarda en localStorage ni via el sync cross-tab; al reabrir navegador se recupera por `POST /auth/refresh` cuando existe cookie/sesion valida
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
 - el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
 - el registro por email cliente y la verificacion telefonica autenticada usan Vonage Verify API; en `/auth/register/phone/send|confirm` y `/auth/verify/phone/send|confirm`, el backend persiste internamente el `request_id` de Vonage para mantener estable el contrato publico `telefono + codigo`; al activar `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, el registro cliente exige telefono verificado, mientras el registro profesional puede guardar el telefono como contacto sin marcarlo verificado. Cuando un telefono queda verificado, no se reutiliza en otra cuenta activa
@@ -317,12 +317,15 @@ Variables detectadas en uso:
 - `NEXT_BUILD_DIR`
 - `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` — dominio CDN para imágenes R2 (default: `https://img.surlogicuy.com`)
 - `NEXT_PUBLIC_SITE_URL` — URL canonica publica para metadata SEO y sitemap (default: `https://pluraapp.com`)
+- `NEXT_PUBLIC_INTERNAL_OPS_API_URL` — URL base por defecto para paneles internos web; si falta, cae a `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_INTERNAL_OPS_ALLOWED_ORIGINS` — allowlist adicional separada por comas para origenes aceptados por paneles internos y CSP `connect-src`
 - `ANALYZE`
 
 Lectura de producto:
 
-- cubre API, mapa y login social en web
+- cubre API, mapa, login social, CSP y paneles internos en web
 - la metadata SEO publica usa `NEXT_PUBLIC_SITE_URL` si existe; si no, cae a `https://pluraapp.com`
+- `apps/web/next.config.js` emite `Content-Security-Policy`; los origenes de API, CDN de imagenes y ops internas se derivan de las variables publicas anteriores, y mantiene permitidos los proveedores usados por mapas, OAuth, Mercado Pago y QR
 - el repo ya trae `pnpm -C apps/web analyze` para abrir el analisis de chunks sin agregar tooling nuevo
 - `.env.frontend` quedo alineado a despliegue `Vercel -> Fly` con `NEXT_PUBLIC_API_URL=https://plura.fly.dev`; para probar localmente OAuth profesional de Mercado Pago end-to-end hay que sobreescribir temporalmente esa variable a `http://localhost:3000`
 
@@ -468,7 +471,7 @@ El script `scripts/predev.cjs`:
 Deploy vigente:
 
 - backend: Fly.io con `backend-java/fly.toml`, imagen Docker desde `backend-java/Dockerfile` y healthcheck `GET /health`
-- web: Vercel, con variables públicas `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_MAPBOX_TOKEN` y `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`
+- web: Vercel, con variables públicas `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` y, si se usan paneles internos contra otro origen, `NEXT_PUBLIC_INTERNAL_OPS_API_URL` / `NEXT_PUBLIC_INTERNAL_OPS_ALLOWED_ORIGINS`
 - base de datos: Supabase PostgreSQL por Session Pooler
 - imágenes: Cloudflare R2 con CDN público
 

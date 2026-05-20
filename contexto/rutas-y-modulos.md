@@ -305,13 +305,13 @@ Huecos relevantes contra el objetivo:
 
 ### Rutas internas de operaciones
 
-- `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
+- `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno `X-Internal-Token` cargado en memoria de la pestaña, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
 - `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
 - `/internal/ops/errors`: superficie interna de incidentes agregados de backend, async, web y mobile; lista paginada, analytics, filtros y detalle con ultimo `traceId`, contexto y stack trace; protegida por `X-Internal-Token`
 
 Modulos relevantes:
 
-- `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
+- `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables solo en memoria; la URL debe pertenecer a los origenes permitidos por `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_INTERNAL_OPS_API_URL` o `NEXT_PUBLIC_INTERNAL_OPS_ALLOWED_ORIGINS`
 - `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback de app; enlaza a la superficie separada de reseñas
 - `pages/internal/ops/reviews.tsx`: pagina completa de moderacion de reseñas para internal ops; consume `/internal/ops/reviews*`, muestra reportes y mantiene hide/show del texto
 - `pages/internal/ops/errors.tsx`: pagina interna para inspeccionar incidentes agregados de errores consumiendo `/internal/ops/app-errors*`

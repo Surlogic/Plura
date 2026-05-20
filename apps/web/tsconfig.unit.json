@@ -23,6 +23,10 @@
     "src/lib/bookings/professionalReservationActions.test.ts",
     "src/lib/phone/internationalPhone.ts",
     "src/lib/phone/internationalPhone.test.ts",
+    "src/services/internalOps.ts",
+    "src/services/internalOps.test.ts",
+    "src/services/session.ts",
+    "src/services/session.test.ts",
     "src/utils/checkoutWindow.ts",
     "src/utils/checkoutWindow.test.ts"
   ]

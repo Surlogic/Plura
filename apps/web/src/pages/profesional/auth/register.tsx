@@ -188,6 +188,10 @@ const PROFESSIONAL_REGISTRATION_CHECKOUT_KEY = 'plura:professional-registration-
 const PROFESSIONAL_REGISTRATION_CHECKOUT_TTL_MS = 2 * 60 * 60 * 1000;
 const PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS = 5;
 const PROFESSIONAL_CHECKOUT_VERIFY_RETRY_DELAY_MS = 2000;
+const PROFESSIONAL_SUBSCRIPTION_READ_MAX_ATTEMPTS = 5;
+const PROFESSIONAL_SUBSCRIPTION_READ_RETRY_DELAY_MS = 1200;
+const PROFESSIONAL_SUBSCRIPTION_READ_PENDING_MESSAGE =
+  'Mercado Pago fue confirmado y la cuenta profesional se creó, pero todavía no pudimos leer la suscripción activa. Entrá a Facturación o reintentá en unos segundos.';
 
 const wait = (milliseconds: number) => new Promise<void>((resolve) => {
   window.setTimeout(resolve, milliseconds);
@@ -257,6 +261,32 @@ const resolveCheckoutStatusMessage = (status?: string | null) => {
     return 'La activación pendiente de Mercado Pago venció. No se creó el perfil profesional; podés reintentar desde el wizard.';
   }
   return 'Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar la verificación cuando quieras.';
+};
+
+const fetchCurrentCoreSubscriptionWithRetry = async () => {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= PROFESSIONAL_SUBSCRIPTION_READ_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const subscription = await fetchCurrentSubscription();
+      if (isCoreSubscriptionEnabled(subscription)) {
+        return subscription;
+      }
+      lastError = null;
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < PROFESSIONAL_SUBSCRIPTION_READ_MAX_ATTEMPTS) {
+      await wait(PROFESSIONAL_SUBSCRIPTION_READ_RETRY_DELAY_MS);
+    }
+  }
+
+  if (lastError) {
+    throw new Error(PROFESSIONAL_SUBSCRIPTION_READ_PENDING_MESSAGE);
+  }
+
+  return null;
 };
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
@@ -1334,9 +1364,9 @@ export default function ProfesionalRegisterPage() {
       setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
     }
 
-    const subscription = await fetchCurrentSubscription();
-    if (!isCoreSubscriptionEnabled(subscription)) {
-      throw new Error('Mercado Pago fue confirmado, pero la suscripción local todavía no quedó activa. Volvé a intentar en unos segundos.');
+    const subscription = await fetchCurrentCoreSubscriptionWithRetry();
+    if (!subscription) {
+      throw new Error(PROFESSIONAL_SUBSCRIPTION_READ_PENDING_MESSAGE);
     }
 
     try {

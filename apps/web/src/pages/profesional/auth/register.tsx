@@ -344,8 +344,11 @@ export default function ProfesionalRegisterPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
   const { categories, isLoading: categoriesLoading } = useCategories();
+  const addProfessionalMode = getQueryStringValue(router.query.mode) === 'add-professional';
+  const resumeProfessionalFlow = hasQueryFlag(router.query.resume);
+  const isBillingReturnQuery = hasQueryFlag(router.query.billingReturn);
   const controlledAddProfessionalFlow =
-    router.query.mode === 'add-professional' || router.query.resume === '1';
+    addProfessionalMode || resumeProfessionalFlow || isBillingReturnQuery;
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RegisterForm>({
@@ -377,6 +380,7 @@ export default function ProfesionalRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
+  const [isProcessingBillingReturn, setIsProcessingBillingReturn] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
@@ -458,13 +462,21 @@ export default function ProfesionalRegisterPage() {
     if (!isBillingReturn) return;
     if (billingReturnHandledRef.current) return;
     billingReturnHandledRef.current = true;
+    const pending = readPendingCheckoutRegistration();
+    const preserveAddProfessionalMode = addProfessionalMode || Boolean(pending?.hasAuthenticatedBaseAccount);
     const checkoutRefFromUrl = normalizeOptionalString(getQueryStringValue(router.query.checkoutRef));
 
     const clearBillingReturnQuery = () => {
+      if (preserveAddProfessionalMode) {
+        void router.replace({
+          pathname: '/profesional/auth/register',
+          query: { mode: 'add-professional' },
+        }, undefined, { shallow: true });
+        return;
+      }
       void router.replace('/profesional/auth/register', undefined, { shallow: true });
     };
 
-    const pending = readPendingCheckoutRegistration();
     const checkoutToken = pending?.checkoutToken ?? null;
     const checkoutRef = checkoutRefFromUrl ?? pending?.checkoutRef ?? null;
     let isActive = true;
@@ -476,6 +488,7 @@ export default function ProfesionalRegisterPage() {
     }
 
     const resumePendingCheckout = async () => {
+      setIsProcessingBillingReturn(true);
       setIsSubmitting(true);
       setErrorMessage(null);
       setPendingCheckoutAction(null);
@@ -536,6 +549,7 @@ export default function ProfesionalRegisterPage() {
       } finally {
         if (isActive) {
           setCheckoutConfirmationMessage(null);
+          setIsProcessingBillingReturn(false);
           setIsSubmitting(false);
         }
       }
@@ -552,6 +566,7 @@ export default function ProfesionalRegisterPage() {
   useEffect(() => {
     if (!router.isReady) return;
     if (hasQueryFlag(router.query.billingReturn)) return;
+    if (isProcessingBillingReturn) return;
     let isActive = true;
     void fetchAuthMe()
       .then((me) => {
@@ -598,7 +613,7 @@ export default function ProfesionalRegisterPage() {
     return () => {
       isActive = false;
     };
-  }, [controlledAddProfessionalFlow, router]);
+  }, [controlledAddProfessionalFlow, isProcessingBillingReturn, router]);
 
   const categoryNameBySlug = useMemo(
     () => new Map(categories.map((category) => [category.slug, category.name])),
@@ -1453,12 +1468,18 @@ export default function ProfesionalRegisterPage() {
       const handoff = buildRegisterHandoff();
       savePendingProfessionalRegisterHandoff(handoff);
       saveOnboardingDraftForLogin();
+      const billingReturnUrl = (() => {
+        if (typeof window === 'undefined') return undefined;
+        const params = new URLSearchParams({ billingReturn: '1' });
+        if (addProfessionalMode || hasAuthenticatedBaseAccount) {
+          params.set('mode', 'add-professional');
+        }
+        return `${window.location.origin}/profesional/auth/register?${params.toString()}`;
+      })();
 
       const checkout = await createProfessionalRegistrationCheckout({
         email: normalizedEmail,
-        returnUrl: typeof window !== 'undefined'
-          ? `${window.location.origin}/profesional/auth/register?billingReturn=1`
-          : undefined,
+        returnUrl: billingReturnUrl,
       });
       const checkoutToken = normalizeOptionalString(checkout.checkoutToken);
       const checkoutRef = normalizeOptionalString(checkout.checkoutRef);

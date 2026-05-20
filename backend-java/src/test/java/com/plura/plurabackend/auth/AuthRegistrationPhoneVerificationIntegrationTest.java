@@ -8,15 +8,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.auth.VonageVerifyClient;
+import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
+import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +55,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class AuthRegistrationPhoneVerificationIntegrationTest {
 
+    private static final String JWT_REFRESH_PEPPER = "test-refresh-pepper-for-registration-phone-flow";
+    private static final String JWT_ISSUER = "plura";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -62,11 +73,18 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
     @Autowired
     private ProfessionalProfileRepository professionalProfileRepository;
 
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
+
     @MockBean
     private VonageVerifyClient vonageVerifyClient;
 
+    @MockBean
+    private MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
+
     @BeforeEach
     void cleanUp() {
+        subscriptionRepository.deleteAll();
         professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -144,9 +162,13 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
                       "rubro":"Cabello",
                       "categorySlugs":["cabello"],
                       "tipoCliente":"SIN_LOCAL",
+                      "billingCheckoutToken":"%s",
                       "password":"Password123"
                     }
-                    """))
+                    """.formatted(confirmedCheckoutTokenFor(
+                    "professional-missing-token@plura.com",
+                    "mp-phone-professional-missing-token"
+                ))))
             .andExpect(status().isAccepted());
 
         org.junit.jupiter.api.Assertions.assertNull(
@@ -180,10 +202,39 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
                     {"phoneNumber":"+59899123460"}
                     """))
             .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error").value("PHONE_ALREADY_IN_USE"))
-            .andExpect(jsonPath("$.message").value("Ese teléfono ya pertenece a otra cuenta activa."));
+            .andExpect(jsonPath("$.error").value("CLIENT_PHONE_ALREADY_IN_USE"))
+            .andExpect(jsonPath("$.message").value("Ese teléfono ya está asociado a otra cuenta cliente activa."));
 
         verify(vonageVerifyClient, never()).startSmsVerification(eq("+59899123460"));
+    }
+
+    private String confirmedCheckoutTokenFor(String email, String providerSubscriptionId) {
+        when(mercadoPagoSubscriptionService.getSubscription(eq(providerSubscriptionId)))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionSnapshot(
+                providerSubscriptionId,
+                "authorized",
+                BigDecimal.valueOf(990),
+                "UYU",
+                null,
+                email,
+                "Plura PLAN_CORE",
+                "mp-core-plan",
+                null,
+                Instant.now(),
+                Instant.now()
+            ));
+
+        return JWT.create()
+            .withIssuer(JWT_ISSUER)
+            .withSubject(email)
+            .withClaim("typ", "professional_registration_checkout")
+            .withClaim("email", email)
+            .withClaim("provider", "MERCADOPAGO")
+            .withClaim("planCode", "PLAN_CORE")
+            .withClaim("providerSubscriptionId", providerSubscriptionId)
+            .withIssuedAt(new Date())
+            .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
+            .sign(Algorithm.HMAC256(JWT_REFRESH_PEPPER));
     }
 
     private Category ensureCategory(String slug, String name) {

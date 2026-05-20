@@ -1,15 +1,20 @@
 package com.plura.plurabackend.core.auth;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.jayway.jsonpath.JsonPath;
 import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
 import com.plura.plurabackend.core.auth.oauth.providers.AppleTokenVerifier;
 import com.plura.plurabackend.core.auth.oauth.providers.GoogleTokenVerifier;
+import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
+import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.category.model.Category;
@@ -18,6 +23,10 @@ import com.plura.plurabackend.professional.repository.ProfessionalProfileReposit
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +64,9 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 class AuthOAuthIntegrationTest {
 
+    private static final String JWT_REFRESH_PEPPER = "test-refresh-pepper-for-oauth-flow";
+    private static final String JWT_ISSUER = "plura";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -71,6 +83,9 @@ class AuthOAuthIntegrationTest {
     private ProfessionalProfileRepository professionalProfileRepository;
 
     @Autowired
+    private SubscriptionRepository subscriptionRepository;
+
+    @Autowired
     private CategoryRepository categoryRepository;
 
     @Autowired
@@ -82,6 +97,9 @@ class AuthOAuthIntegrationTest {
     @MockBean
     private AppleTokenVerifier appleTokenVerifier;
 
+    @MockBean
+    private MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
+
     /**
      * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
      * El objetivo es dejar explicita la regla que protege este test.
@@ -90,6 +108,7 @@ class AuthOAuthIntegrationTest {
     void cleanUp() {
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        subscriptionRepository.deleteAll();
         professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
         categoryRepository.deleteAll();
@@ -232,6 +251,7 @@ class AuthOAuthIntegrationTest {
             oauthResult.getResponse().getContentAsString(),
             "$.oauthRegistrationToken"
         );
+        String checkoutToken = confirmedCheckoutTokenFor("upgrade@plura.com", "mp-oauth-upgrade");
 
         mockMvc.perform(post("/auth/register/profesional")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -242,9 +262,10 @@ class AuthOAuthIntegrationTest {
                       "phoneNumber": "+59899111334",
                       "tipoCliente": "SIN_LOCAL",
                       "categorySlugs": ["belleza"],
+                      "billingCheckoutToken": "%s",
                       "oauthRegistrationToken": "%s"
                     }
-                    """.formatted(oauthRegistrationToken)))
+                    """.formatted(checkoutToken, oauthRegistrationToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.activeContext.type").value("PROFESSIONAL"));
@@ -272,9 +293,10 @@ class AuthOAuthIntegrationTest {
                       "phoneNumber": "+59899111222",
                       "password": "secret-1234",
                       "tipoCliente": "SIN_LOCAL",
-                      "categorySlugs": ["belleza"]
+                      "categorySlugs": ["belleza"],
+                      "billingCheckoutToken": "%s"
                     }
-                    """))
+                    """.formatted(confirmedCheckoutTokenFor("pro-email@plura.com", "mp-oauth-pro-email"))))
             .andExpect(status().isAccepted());
 
         User stored = userRepository.findByEmail("pro-email@plura.com").orElseThrow();
@@ -302,6 +324,7 @@ class AuthOAuthIntegrationTest {
             oauthResult.getResponse().getContentAsString(),
             "$.oauthRegistrationToken"
         );
+        String checkoutToken = confirmedCheckoutTokenFor("pro-google-final@plura.com", "mp-oauth-pro-google-final");
 
         mockMvc.perform(post("/auth/register/profesional")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -312,9 +335,10 @@ class AuthOAuthIntegrationTest {
                       "phoneNumber": "+59899111333",
                       "tipoCliente": "SIN_LOCAL",
                       "categorySlugs": ["belleza"],
+                      "billingCheckoutToken": "%s",
                       "oauthRegistrationToken": "%s"
                     }
-                    """.formatted(oauthRegistrationToken)))
+                    """.formatted(checkoutToken, oauthRegistrationToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.activeContext.type").value("PROFESSIONAL"));
@@ -465,6 +489,35 @@ class AuthOAuthIntegrationTest {
             .andExpect(jsonPath("$.message").value("Token OAuth inválido"));
 
         org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+    }
+
+    private String confirmedCheckoutTokenFor(String email, String providerSubscriptionId) {
+        when(mercadoPagoSubscriptionService.getSubscription(eq(providerSubscriptionId)))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionSnapshot(
+                providerSubscriptionId,
+                "authorized",
+                BigDecimal.valueOf(990),
+                "UYU",
+                null,
+                email,
+                "Plura PLAN_CORE",
+                "mp-core-plan",
+                null,
+                Instant.now(),
+                Instant.now()
+            ));
+
+        return JWT.create()
+            .withIssuer(JWT_ISSUER)
+            .withSubject(email)
+            .withClaim("typ", "professional_registration_checkout")
+            .withClaim("email", email)
+            .withClaim("provider", "MERCADOPAGO")
+            .withClaim("planCode", "PLAN_CORE")
+            .withClaim("providerSubscriptionId", providerSubscriptionId)
+            .withIssuedAt(new Date())
+            .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
+            .sign(Algorithm.HMAC256(JWT_REFRESH_PEPPER));
     }
 
     private void seedCategory() {

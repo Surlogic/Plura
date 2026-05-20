@@ -1,5 +1,7 @@
 package com.plura.plurabackend.core.auth;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -7,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
@@ -14,6 +18,8 @@ import com.plura.plurabackend.core.auth.model.RefreshToken;
 import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
+import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.user.model.User;
@@ -21,15 +27,20 @@ import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,6 +72,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class AuthSessionIntegrationTest {
 
     private static final String JWT_REFRESH_PEPPER = "test-refresh-pepper-for-session-flow";
+    private static final String JWT_ISSUER = "plura";
 
     @Autowired
     private MockMvc mockMvc;
@@ -84,10 +96,16 @@ class AuthSessionIntegrationTest {
     private ProfessionalProfileRepository professionalProfileRepository;
 
     @Autowired
+    private SubscriptionRepository subscriptionRepository;
+
+    @Autowired
     private CategoryRepository categoryRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @MockBean
+    private MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
 
     /**
      * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
@@ -98,6 +116,7 @@ class AuthSessionIntegrationTest {
         authAuditLogRepository.deleteAll();
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        subscriptionRepository.deleteAll();
         professionalProfileRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
@@ -323,6 +342,10 @@ class AuthSessionIntegrationTest {
         ensureCategory("cabello", "Cabello");
         registerClient("activate-professional@plura.com");
         JsonNode loginPayload = loginMobile("activate-professional@plura.com");
+        String checkoutToken = confirmedCheckoutTokenFor(
+            "activate-professional@plura.com",
+            "mp-session-activate-professional"
+        );
 
         mockMvc.perform(post("/auth/professional-profile/activate")
                 .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
@@ -330,9 +353,10 @@ class AuthSessionIntegrationTest {
                 .content("""
                     {
                       "categorySlugs": ["cabello"],
-                      "tipoCliente": "SIN_LOCAL"
+                      "tipoCliente": "SIN_LOCAL",
+                      "billingCheckoutToken": "%s"
                     }
-                    """))
+                    """.formatted(checkoutToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
             .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
@@ -354,9 +378,10 @@ class AuthSessionIntegrationTest {
         String payload = """
             {
               "categorySlugs": ["cabello"],
-              "tipoCliente": "SIN_LOCAL"
+              "tipoCliente": "SIN_LOCAL",
+              "billingCheckoutToken": "%s"
             }
-            """;
+            """.formatted(confirmedCheckoutTokenFor("activate-twice@plura.com", "mp-session-activate-twice"));
         mockMvc.perform(post("/auth/professional-profile/activate")
                 .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -407,15 +432,20 @@ class AuthSessionIntegrationTest {
         Long profileId = professionalProfileRepository.save(inactive).getId();
 
         JsonNode loginPayload = loginMobile("reactivate-professional@plura.com");
+        String checkoutToken = confirmedCheckoutTokenFor(
+            "reactivate-professional@plura.com",
+            "mp-session-reactivate-professional"
+        );
         mockMvc.perform(post("/auth/professional-profile/activate")
                 .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "categorySlugs": ["cabello"],
-                      "tipoCliente": "SIN_LOCAL"
+                      "tipoCliente": "SIN_LOCAL",
+                      "billingCheckoutToken": "%s"
                     }
-                    """))
+                    """.formatted(checkoutToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
 
@@ -641,6 +671,35 @@ class AuthSessionIntegrationTest {
     private String uniquePhoneFor(String email) {
         String suffix = String.format("%08d", Math.abs((long) email.hashCode()) % 100_000_000L);
         return "+54911" + suffix;
+    }
+
+    private String confirmedCheckoutTokenFor(String email, String providerSubscriptionId) {
+        when(mercadoPagoSubscriptionService.getSubscription(eq(providerSubscriptionId)))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionSnapshot(
+                providerSubscriptionId,
+                "authorized",
+                BigDecimal.valueOf(990),
+                "UYU",
+                null,
+                email,
+                "Plura PLAN_CORE",
+                "mp-core-plan",
+                null,
+                Instant.now(),
+                Instant.now()
+            ));
+
+        return JWT.create()
+            .withIssuer(JWT_ISSUER)
+            .withSubject(email)
+            .withClaim("typ", "professional_registration_checkout")
+            .withClaim("email", email)
+            .withClaim("provider", "MERCADOPAGO")
+            .withClaim("planCode", "PLAN_CORE")
+            .withClaim("providerSubscriptionId", providerSubscriptionId)
+            .withIssuedAt(new Date())
+            .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
+            .sign(Algorithm.HMAC256(JWT_REFRESH_PEPPER));
     }
 
     private void registerProfessional(String email) {

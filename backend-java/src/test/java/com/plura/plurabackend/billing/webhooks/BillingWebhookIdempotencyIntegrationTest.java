@@ -46,6 +46,7 @@ import org.springframework.test.web.servlet.MockMvc;
     "HIKARI_CONNECTION_INIT_SQL=SELECT 1",
     "SWAGGER_ENABLED=false",
     "BILLING_ENABLED=true",
+    "BILLING_TRIAL_IDENTITY_PEPPER=test-billing-trial-pepper",
     "BILLING_MODE=sandbox",
     "BILLING_PROVIDER_VERIFICATION_ENABLED=false",
     "BILLING_WEBHOOK_BASE_URL=http://localhost:3000",

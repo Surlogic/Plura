@@ -12,6 +12,7 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import api from '@/services/api';
 import {
   DashboardIcon,
+  DashboardPageHeader,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
@@ -431,14 +432,14 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[860px] bg-white lg:min-w-0">
-        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] bg-white">
-          <div className="bg-[#F8FAFC] p-3" aria-hidden="true" />
+        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] bg-[#F8FAFC]">
+          <div className="p-2.5" aria-hidden="true" />
           {weekDays.map((day) => {
             const isToday = day.dateKey === todayKey;
             return (
               <div
                 key={day.dateKey}
-                className={`border-l border-[#E2E8F0] p-3 text-center ${isToday ? 'bg-[#ECFDF5]/70' : ''}`}
+                className={`border-l border-[#EDF2F7] p-2.5 text-center ${isToday ? 'bg-[#ECFDF5]' : ''}`}
               >
                 <p className={`text-sm font-medium ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
                   {dayLabelsShort[day.dayKey]} {day.dayNumber}
@@ -450,19 +451,19 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 
         <div
           ref={scrollContainerRef}
-          className="relative max-h-[600px] overflow-y-auto overscroll-contain scroll-smooth"
+          className="relative max-h-[560px] overflow-y-auto overscroll-contain scroll-smooth"
         >
           {hourMarkers.map((hourStartMinutes) => (
             <div
               key={hourStartMinutes}
-              className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] last:border-b-0"
+              className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#EDF2F7] last:border-b-0"
             >
-              <div className="min-h-[68px] bg-white p-3 pr-2 text-right text-xs text-[#64748B]">
+              <div className="min-h-[68px] bg-[#F8FAFC]/70 p-2.5 pr-2 text-right text-xs text-[#94A3B8]">
                 {formatMinutesLabel(hourStartMinutes)}
               </div>
               {weekDays.map((day, index) => {
                 const isToday = day.dateKey === todayKey;
-                const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
+                const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FCFDFE]';
                 const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
                 const reservationsInHour = dayLayouts.filter(
                   (layout) =>
@@ -480,8 +481,8 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                 return (
                   <div
                     key={`${day.dateKey}-${hourStartMinutes}`}
-                    className={`relative min-h-[68px] border-l border-[#E2E8F0] p-1 ${
-                      isToday ? 'bg-[#ECFDF5]/30' : baseBackground
+                    className={`relative min-h-[68px] border-l border-[#EDF2F7] p-1 ${
+                      isToday ? 'bg-[#F0FDFA]' : baseBackground
                     }`}
                   >
                     {showNowLine ? (
@@ -508,7 +509,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                             type="button"
                             key={layout.reservation.id}
                             onClick={() => onReservationOpen(layout.reservation)}
-                            className={`w-full rounded-lg border p-2 text-left shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:shadow-sm ${palette.card}`}
+                            className={`w-full rounded-md border p-2 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
                           >
                             <p className="text-xs font-semibold leading-none text-[#0F172A]">
                               {layout.reservation.time || '--:--'}
@@ -546,8 +547,8 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
   monthLabel: string;
 }) {
   return (
-    <div className="mt-3 overflow-hidden rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="grid grid-cols-7 gap-1 border-b border-[#E2E7EC] bg-[#F8FAFC] px-2 text-center">
+    <div className="overflow-hidden bg-white">
+      <div className="grid grid-cols-7 gap-1 border-b border-[#E2E8F0] bg-[#F8FAFC] px-2 text-center">
         {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayLabel) => (
           <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
             {dayLabel}
@@ -561,10 +562,10 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
           return (
             <div
               key={day.dateKey}
-              className={`min-h-[96px] rounded-[16px] p-2 text-xs transition ${
+              className={`min-h-[96px] rounded-xl p-2 text-xs transition ${
                 day.isToday
                   ? 'bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
-                  : day.isCurrentMonth
+                : day.isCurrentMonth
                     ? 'bg-[color:var(--surface-muted)] text-[color:var(--ink)]'
                     : 'bg-transparent text-[color:var(--border-strong)]'
               }`}
@@ -611,7 +612,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
           );
         })}
       </div>
-      <p className="border-t border-[color:var(--border-soft)] py-3 text-center text-xs uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
+      <p className="border-t border-[#E2E8F0] py-3 text-center text-xs font-semibold uppercase tracking-[0.24em] text-[#94A3B8]">
         {monthLabel}
       </p>
     </div>
@@ -1123,29 +1124,18 @@ export default function ProfesionalDashboardPage() {
   };
 
   return (
-    <ProfessionalDashboardShell
-      profile={profile}
-      active="Agenda"
-      maxWidthClassName="max-w-none"
-      contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0 xl:px-0"
-    >
-      <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
-        <header className="shrink-0 border-b border-[#E2E8F0] bg-white">
-          <div className="flex flex-col gap-3 px-4 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8 lg:py-6">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-medium leading-normal text-[#0F172A]">
-                Agenda
-              </h1>
-              <p className="mt-1 text-sm text-[#64748B]">
-                Gestiona tus reservas y visualiza tu calendario semanal
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
+    <ProfessionalDashboardShell profile={profile} active="Agenda">
+      <div className="space-y-6">
+        <DashboardPageHeader
+          title="Agenda"
+          description="Gestiona tus reservas y visualiza tu calendario semanal"
+          actions={(
+            <>
               <Button
                 type="button"
                 size="sm"
                 onClick={handleToday}
-                className="h-10 rounded-[14px] border-[#E2E8F0] bg-white px-4 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
+                className="h-9 rounded-xl border-[#E2E8F0] bg-white px-3 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
               >
                 <DashboardIcon name="agenda" className="mr-2 h-4 w-4" />
                 Hoy
@@ -1157,7 +1147,7 @@ export default function ProfesionalDashboardPage() {
                 onClick={() => {
                   requestNavigation('/profesional/notificaciones');
                 }}
-                className="relative h-10 w-10 rounded-[14px] border-[#E2E8F0] bg-white px-0 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
+                className="relative h-9 w-9 rounded-xl border-[#E2E8F0] bg-white px-0 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
               >
                 <DashboardIcon name="notificaciones" className="h-4 w-4" />
                 {unreadNotificationCount > 0 ? (
@@ -1171,16 +1161,14 @@ export default function ProfesionalDashboardPage() {
                 onClick={() => {
                   requestNavigation('/profesional/dashboard/reservas');
                 }}
-                className="h-10 rounded-[14px] px-4"
+                className="h-9 rounded-xl px-3"
               >
                 <span className="mr-2 text-base leading-none">+</span>
                 Nueva reserva
               </Button>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 space-y-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+            </>
+          )}
+        />
           {profile && !profile.emailVerified ? (
             <EmailVerificationPanel
               email={profile.email}
@@ -1199,7 +1187,7 @@ export default function ProfesionalDashboardPage() {
             </p>
           ) : null}
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {agendaOverviewCards.map((item) => (
               <DashboardStatCard
                 key={item.label}
@@ -1209,24 +1197,30 @@ export default function ProfesionalDashboardPage() {
                 icon={item.icon}
                 tone={item.tone}
                 variant="compact"
+                className="p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
               />
             ))}
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-            <div className="flex flex-col gap-3 border-b border-[#E2E8F0] px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-              <h2 className="text-xl font-medium text-[#0F172A]">
-                {calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
-              </h2>
+          <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex flex-col gap-3 border-b border-[#E2E8F0] bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-[#0F172A]">
+                  {calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
+                </h2>
+                <p className="mt-0.5 text-xs text-[#64748B]">
+                  {calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                </p>
+              </div>
 
-              <div className="flex flex-wrap items-center gap-4 lg:justify-end">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                <div className="inline-flex rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1">
                   <button
                     type="button"
                     onClick={() => handleSetView('week')}
                     className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                       calendarView === 'week'
-                        ? 'bg-[#0F766E] text-white'
+                        ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.08)]'
                         : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
                     }`}
                   >
@@ -1238,7 +1232,7 @@ export default function ProfesionalDashboardPage() {
                     disabled={!canUseMonthlyCalendar}
                     className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                       calendarView === 'month'
-                        ? 'bg-[#0F766E] text-white'
+                        ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.08)]'
                         : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
                     } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
                   >
@@ -1246,23 +1240,23 @@ export default function ProfesionalDashboardPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 border-l border-[#E2E8F0] pl-4">
+                <div className="flex items-center gap-1 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1">
                   <span className="text-xs text-[#64748B]">Inicia:</span>
-                  <span className="rounded-md bg-[#0F766E] px-2.5 py-1 text-xs font-medium text-white">
+                  <span className="rounded-lg bg-[#0F766E] px-2 py-1 text-xs font-medium text-white">
                     Lun
                   </span>
-                  <span className="rounded-md px-2.5 py-1 text-xs font-medium text-[#64748B]">
+                  <span className="rounded-lg px-2 py-1 text-xs font-medium text-[#64748B]">
                     Dom
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
                   <button
                     type="button"
                     onClick={handlePrev}
                     disabled={!canNavigateCalendar}
                     aria-label="Semana anterior"
-                    className={`rounded-lg p-1.5 transition ${
+                    className={`px-3 py-2 text-lg leading-none transition ${
                       canNavigateCalendar
                         ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
                         : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
@@ -1270,7 +1264,7 @@ export default function ProfesionalDashboardPage() {
                   >
                     ‹
                   </button>
-                  <span className="min-w-[120px] text-center text-sm text-[#64748B]">
+                  <span className="min-w-[132px] border-x border-[#E2E8F0] px-3 text-center text-sm text-[#64748B]">
                     {calendarView === 'week' ? calendarWeekLabel : monthLabel}
                   </span>
                   <button
@@ -1278,7 +1272,7 @@ export default function ProfesionalDashboardPage() {
                     onClick={handleNext}
                     disabled={!canNavigateCalendar}
                     aria-label="Semana siguiente"
-                    className={`rounded-lg p-1.5 transition ${
+                    className={`px-3 py-2 text-lg leading-none transition ${
                       canNavigateCalendar
                         ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
                         : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
@@ -1301,7 +1295,7 @@ export default function ProfesionalDashboardPage() {
                 onReservationOpen={handleOpenReservation}
               />
             ) : (
-              <div className="max-h-[600px] overflow-auto">
+              <div className="max-h-[600px] overflow-auto bg-white">
                 <MonthCalendarBoard
                   monthGridDays={monthGridDays}
                   reservationsByDate={reservationsByDate}
@@ -1405,7 +1399,6 @@ export default function ProfesionalDashboardPage() {
               </p>
             </div>
           </section>
-        </div>
       </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">

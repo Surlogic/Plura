@@ -29,6 +29,7 @@ import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Locale;
@@ -526,9 +527,23 @@ public class ProfessionalRegistrationCheckoutService {
             .findSubscriptionByRegistrationReference(
                 intent.getRegistrationReference(),
                 intent.getEmail(),
-                intent.getPreapprovalPlanId()
+                intent.getPreapprovalPlanId(),
+                resolveCheckoutIssuedAt(intent, token)
             )
             .orElse(null);
+    }
+
+    private Instant resolveCheckoutIssuedAt(
+        ProfessionalRegistrationCheckoutIntent intent,
+        CheckoutToken token
+    ) {
+        if (token != null && token.issuedAt() != null) {
+            return token.issuedAt();
+        }
+        if (intent.getCreatedAt() == null) {
+            return null;
+        }
+        return intent.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant();
     }
 
     private void applySnapshotToIntent(

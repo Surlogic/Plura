@@ -454,17 +454,6 @@ export default function ProfesionalRegisterPage() {
       try {
         clearBillingReturnQuery();
 
-        const returnedProviderSubscriptionId = [
-          router.query.preapproval_id,
-          router.query.preapprovalId,
-          router.query.providerSubscriptionId,
-          router.query.subscription_id,
-          router.query.subscriptionId,
-        ]
-          .map(resolveQueryValue)
-          .find((value) => value.trim().length > 0)
-          ?.trim();
-
         let confirmedCheckoutToken: string | null = null;
         let lastStatus: string | null = null;
         let lastCheckoutUrl: string | null = pending?.checkoutUrl ?? null;

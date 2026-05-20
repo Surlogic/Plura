@@ -29,6 +29,7 @@ import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Optional;
@@ -44,13 +45,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProfessionalRegistrationCheckoutService {
 
     private static final String TOKEN_TYPE = "professional_registration_checkout";
-<<<<<<< HEAD
-    private static final Duration CHECKOUT_TOKEN_TTL = Duration.ofDays(7);
-    private static final Duration CHECKOUT_TOKEN_RECOVERY_LEEWAY = Duration.ofDays(30);
-=======
     private static final long CHECKOUT_TOKEN_TTL_HOURS = 2;
+    private static final Duration CHECKOUT_TOKEN_RECOVERY_LEEWAY = Duration.ofDays(30);
     private static final String REGISTER_PATH = "/profesional/auth/register";
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 
     private final BillingProperties billingProperties;
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
@@ -142,32 +139,11 @@ public class ProfessionalRegistrationCheckoutService {
         return buildIntentResponse(intent, checkoutToken, false);
     }
 
-<<<<<<< HEAD
-    public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken) {
-        return verifyCheckout(checkoutToken, null);
-    }
-
-    public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken, String providerSubscriptionId) {
-        CheckoutToken token = verifyCheckoutToken(checkoutToken);
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token, providerSubscriptionId);
-        String status = snapshot == null ? "" : normalizeStatus(snapshot.status());
-        boolean confirmed = isConfirmedSubscriptionStatus(status) && hasText(snapshot.providerSubscriptionId());
-        String responseToken = confirmed && !hasText(token.providerSubscriptionId())
-            ? buildCheckoutToken(
-                token.email(),
-                snapshot.providerSubscriptionId(),
-                token.registrationReference(),
-                token.preapprovalPlanId(),
-                token.plan()
-            )
-            : checkoutToken;
-=======
     @Transactional
     public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken, String checkoutRef) {
         if (!hasText(checkoutToken) && !hasText(checkoutRef)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checkoutToken o checkoutRef es obligatorio");
         }
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 
         CheckoutToken token = hasText(checkoutToken) ? verifyCheckoutToken(checkoutToken) : null;
         ProfessionalRegistrationCheckoutIntent intent = resolveIntentForUpdate(checkoutRef, token).orElse(null);
@@ -415,11 +391,7 @@ public class ProfessionalRegistrationCheckoutService {
             .withClaim("provider", "MERCADOPAGO")
             .withClaim("planCode", plan.canonicalCode())
             .withIssuedAt(new Date())
-<<<<<<< HEAD
-            .withExpiresAt(Date.from(Instant.now().plus(CHECKOUT_TOKEN_TTL)));
-=======
             .withExpiresAt(Date.from(Instant.now().plus(CHECKOUT_TOKEN_TTL_HOURS, ChronoUnit.HOURS)));
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
         if (hasText(providerSubscriptionId)) {
             tokenBuilder.withClaim("providerSubscriptionId", providerSubscriptionId.trim());
         }
@@ -470,9 +442,6 @@ public class ProfessionalRegistrationCheckoutService {
     }
 
     private MercadoPagoSubscriptionService.SubscriptionSnapshot requireConfirmedSnapshot(CheckoutToken token) {
-<<<<<<< HEAD
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token, null);
-=======
         ProfessionalRegistrationCheckoutIntent intent = findIntentForTokenForUpdate(token).orElse(null);
         MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = intent == null
             ? resolveCheckoutSnapshot(token)
@@ -481,13 +450,16 @@ public class ProfessionalRegistrationCheckoutService {
             applySnapshotToIntent(intent, snapshot);
             checkoutIntentRepository.saveAndFlush(intent);
         }
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
         if (snapshot == null
             || !hasText(snapshot.providerSubscriptionId())
             || !isConfirmedSubscriptionStatus(normalizeStatus(snapshot.status()))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavia no confirmo la suscripcion");
         }
         return snapshot;
+    }
+
+    private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveCheckoutSnapshot(CheckoutToken token) {
+        return resolveCheckoutSnapshot(token, null);
     }
 
     private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveCheckoutSnapshot(
@@ -520,24 +492,25 @@ public class ProfessionalRegistrationCheckoutService {
             .orElse(null);
     }
 
-<<<<<<< HEAD
     private void ensureSnapshotCompatibleWithCheckout(
         CheckoutToken token,
         MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot
     ) {
         if (snapshot == null || !hasText(snapshot.providerSubscriptionId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavÃ­a no confirmÃ³ la suscripciÃ³n");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavia no confirmo la suscripcion");
         }
         if (hasText(token.registrationReference())
             && hasText(snapshot.externalReference())
             && !token.registrationReference().equals(snapshot.externalReference())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripciÃ³n no pertenece a este checkout");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripcion no pertenece a este checkout");
         }
         if (hasText(token.preapprovalPlanId())
             && hasText(snapshot.preapprovalPlanId())
             && !token.preapprovalPlanId().equals(snapshot.preapprovalPlanId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripciÃ³n no pertenece al plan confirmado");
-=======
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La suscripcion no pertenece al plan confirmado");
+        }
+    }
+
     private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveSnapshotForIntent(
         ProfessionalRegistrationCheckoutIntent intent,
         CheckoutToken token
@@ -626,7 +599,6 @@ public class ProfessionalRegistrationCheckoutService {
         if (hasText(token.registrationReference())
             && !intent.getRegistrationReference().equals(token.registrationReference())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El checkoutToken no pertenece al checkoutRef");
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
         }
     }
 
@@ -746,17 +718,16 @@ public class ProfessionalRegistrationCheckoutService {
         return rawStatus == null ? "" : rawStatus.trim().toLowerCase(Locale.ROOT);
     }
 
-<<<<<<< HEAD
     private String normalizeOptionalText(String value) {
         return value == null || value.isBlank() ? null : value.trim();
-=======
+    }
+
     private String firstText(String first, String second) {
         return hasText(first) ? first.trim() : blankToNull(second);
     }
 
     private String blankToNull(String value) {
         return hasText(value) ? value.trim() : null;
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
     }
 
     private boolean hasText(String value) {

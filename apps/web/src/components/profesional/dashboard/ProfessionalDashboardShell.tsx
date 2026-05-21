@@ -62,7 +62,7 @@ export default function ProfessionalDashboardShell({
             isSidebarCollapsed ? 'w-[76px]' : 'w-[276px]',
           )}
         >
-          <div className="h-full overflow-y-auto overscroll-contain">
+          <div className="h-full overflow-x-hidden overflow-y-auto overscroll-contain">
             <ProfesionalSidebar
               profile={profile}
               active={active}

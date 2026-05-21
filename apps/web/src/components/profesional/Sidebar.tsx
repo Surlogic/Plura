@@ -170,7 +170,10 @@ function ProfesionalSidebar({
   return (
     <aside
       ref={rootRef}
-      className="relative flex min-h-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
+      className={cn(
+        'relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]',
+        !collapsed && '[scrollbar-gutter:stable]',
+      )}
     >
       <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-5' : 'px-5 py-5')}>
         <div className={cn(collapsed ? 'flex justify-center' : 'flex items-start gap-4')}>
@@ -194,7 +197,7 @@ function ProfesionalSidebar({
               initials
             )}
             </div>
-            <span className={cn('inline-flex rounded-lg bg-[#DFFBF2] px-3 py-1 text-sm font-semibold leading-none text-[#087A62]', collapsed && 'sr-only')}>
+            <span className={cn('inline-flex rounded-lg bg-[#DFFBF2] px-3 py-1 text-sm font-semibold leading-none text-[#087A62]', collapsed && 'hidden')}>
               {planLabel}
             </span>
           </div>
@@ -204,13 +207,13 @@ function ProfesionalSidebar({
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-2 py-5' : 'px-3 py-5')}>
+      <nav className={cn('flex-1 overflow-x-hidden overflow-y-auto', collapsed ? 'px-1.5 py-5' : 'px-3 py-5')}>
         {menuSections.map((section, sectionIndex) => (
           <div key={section.label} className={cn(collapsed ? 'mb-6' : 'mb-6')}>
             {collapsed && sectionIndex > 0 ? (
               <div className="mx-auto mb-6 h-px w-9 bg-[#E2E8F0]" />
             ) : null}
-            <p className={cn('mb-4 px-2 text-xs font-semibold uppercase tracking-normal text-[#64748B]', collapsed && 'sr-only')}>
+            <p className={cn('mb-4 px-2 text-xs font-semibold uppercase tracking-normal text-[#64748B]', collapsed && 'hidden')}>
               {section.label}
             </p>
             <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
@@ -255,7 +258,7 @@ function ProfesionalSidebar({
                       className={cn(
                         'min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200',
                         isDisabled && 'opacity-60',
-                        collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap',
+                        collapsed ? 'hidden w-0 overflow-hidden opacity-0' : 'whitespace-nowrap',
                       )}
                     >
                       {item.label}
@@ -314,7 +317,7 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto py-5', collapsed ? 'px-2' : 'px-3')}>
+      <div className={cn('mt-auto overflow-x-hidden py-5', collapsed ? 'px-1.5' : 'px-3')}>
         <div className={cn('mx-auto mb-4 h-px bg-[#E2E8F0]', collapsed ? 'w-9' : 'w-full')} />
         <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
           {onToggleCollapsed ? (
@@ -335,7 +338,7 @@ function ProfesionalSidebar({
                   <path d="m18 7-5 5 5 5" />
                 </svg>
               </span>
-              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
+              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'hidden w-0 overflow-hidden opacity-0' : 'whitespace-nowrap')}>
                 Contraer menú
               </span>
             </button>
@@ -355,7 +358,7 @@ function ProfesionalSidebar({
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
                 <DashboardIcon name="entrarCliente" className="h-5 w-5" />
               </span>
-              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
+              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'hidden w-0 overflow-hidden opacity-0' : 'whitespace-nowrap')}>
                 {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
               </span>
             </button>
@@ -378,7 +381,7 @@ function ProfesionalSidebar({
                 <path d="M18 12H9" />
               </svg>
             </span>
-            <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
+            <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'hidden w-0 overflow-hidden opacity-0' : 'whitespace-nowrap')}>
               {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
             </span>
           </button>

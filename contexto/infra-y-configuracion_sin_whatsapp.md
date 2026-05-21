@@ -45,7 +45,7 @@ Lectura operativa actual:
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT`, `PROFESSIONAL` o `WORKER`) para bootstrap de sesion en rutas publicas; deriva primero `ctx` del access token en memoria y solo usa `role` como fallback legacy. El access token web no se guarda en localStorage ni via el sync cross-tab; al reabrir navegador se recupera por `POST /auth/refresh` cuando existe cookie/sesion valida
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
 - el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
-- el registro por email cliente, el OTP SMS opcional de registro y la verificacion telefonica autenticada usan Vonage Verify API; en `/auth/register/phone/send|confirm` y `/auth/verify/phone/send|confirm`, el backend persiste internamente el `request_id` de Vonage para mantener estable el contrato publico `telefono + codigo`. El registro cliente y el registro profesional guardan telefono sin exigir OTP; si un `phoneVerificationToken` valido llega en el alta, el telefono queda verificado. Cuando un telefono queda verificado, no se reutiliza en otra cuenta activa
+- el registro por email cliente, el OTP SMS opcional de registro y la verificacion telefonica autenticada usan un proveedor OTP SMS configurable por `AUTH_PHONE_VERIFICATION_PROVIDER` (`vonage` o `firebase`); Vonage Verify se mantiene disponible y Firebase Phone Auth puede activarse por env sin cambiar endpoints. En `/auth/register/phone/send|confirm` y `/auth/verify/phone/send|confirm`, el backend persiste internamente el identificador del proveedor (`request_id` de Vonage o `sessionInfo` de Firebase) para mantener estable el contrato publico `telefono + codigo`. El registro cliente y el registro profesional guardan telefono sin exigir OTP; si un `phoneVerificationToken` valido llega en el alta, el telefono queda verificado. Cuando un telefono queda verificado, no se reutiliza en otra cuenta activa
 - despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; para contexto cliente ese cierre no exige OTP y acepta el mismo `phoneVerificationToken` emitido tras Vonage Verify solo como verificacion opcional
 - las invitaciones de trabajadores usan endpoints publicos bajo `/auth/worker-invitations`; el token se guarda hasheado en `professional_worker`, vence a los `14` dias y al aceptarlo vincula o crea un `app_user` de base `USER` para que luego pueda entrar por el futuro login unificado/contextual
 
@@ -199,12 +199,22 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 
 Variables de backend para OTP SMS opcional de registro con Vonage Verify API:
 
+- `AUTH_PHONE_VERIFICATION_PROVIDER` (`vonage` o `firebase`, default `vonage`)
 - `VONAGE_VERIFY_ENABLED`
 - `VONAGE_VERIFY_BASE_URL`
 - `VONAGE_API_KEY`
 - `VONAGE_API_SECRET`
 - `VONAGE_VERIFY_BRAND`
+- `VONAGE_VERIFY_FROM`
 - `VONAGE_VERIFY_CODE_LENGTH`
+- `FIREBASE_PHONE_VERIFICATION_ENABLED`
+- `FIREBASE_PHONE_VERIFICATION_BASE_URL`
+- `FIREBASE_PHONE_VERIFICATION_API_KEY`
+- `FIREBASE_PHONE_VERIFICATION_RECAPTCHA_TOKEN`
+- `FIREBASE_PHONE_VERIFICATION_PLAY_INTEGRITY_TOKEN`
+- `FIREBASE_PHONE_VERIFICATION_CAPTCHA_RESPONSE`
+- `FIREBASE_PHONE_VERIFICATION_TENANT_ID`
+- `FIREBASE_PHONE_VERIFICATION_LOCALE`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES`

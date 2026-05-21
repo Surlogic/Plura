@@ -170,6 +170,7 @@ app:
       max-attempts: ${AUTH_EMAIL_VERIFICATION_MAX_ATTEMPTS:5}
       pepper: ${AUTH_EMAIL_VERIFICATION_PEPPER:${JWT_REFRESH_PEPPER}}
     phone-verification:
+      provider: ${AUTH_PHONE_VERIFICATION_PROVIDER:vonage}
       ttl-minutes: ${AUTH_PHONE_VERIFICATION_TTL_MINUTES:10}
       cooldown-seconds: ${AUTH_PHONE_VERIFICATION_COOLDOWN_SECONDS:60}
       max-attempts: ${AUTH_PHONE_VERIFICATION_MAX_ATTEMPTS:5}
@@ -185,7 +186,17 @@ app:
       api-key: ${VONAGE_API_KEY:}
       api-secret: ${VONAGE_API_SECRET:}
       brand: ${VONAGE_VERIFY_BRAND:Plura}
+      from: ${VONAGE_VERIFY_FROM:}
       code-length: ${VONAGE_VERIFY_CODE_LENGTH:6}
+    firebase-phone-verification:
+      enabled: ${FIREBASE_PHONE_VERIFICATION_ENABLED:false}
+      base-url: ${FIREBASE_PHONE_VERIFICATION_BASE_URL:https://identitytoolkit.googleapis.com}
+      api-key: ${FIREBASE_PHONE_VERIFICATION_API_KEY:}
+      recaptcha-token: ${FIREBASE_PHONE_VERIFICATION_RECAPTCHA_TOKEN:}
+      play-integrity-token: ${FIREBASE_PHONE_VERIFICATION_PLAY_INTEGRITY_TOKEN:}
+      captcha-response: ${FIREBASE_PHONE_VERIFICATION_CAPTCHA_RESPONSE:}
+      tenant-id: ${FIREBASE_PHONE_VERIFICATION_TENANT_ID:}
+      locale: ${FIREBASE_PHONE_VERIFICATION_LOCALE:es-419}
     otp-challenge:
       ttl-minutes: ${AUTH_OTP_CHALLENGE_TTL_MINUTES:10}
       cooldown-seconds: ${AUTH_OTP_CHALLENGE_COOLDOWN_SECONDS:60}

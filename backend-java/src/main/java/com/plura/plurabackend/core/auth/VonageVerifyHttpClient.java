@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -17,13 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
  * Cliente HTTP real para Vonage Verify v2 usando workflow SMS.
  */
 @Component
-public class VonageVerifyHttpClient implements VonageVerifyClient {
+public class VonageVerifyHttpClient {
 
     private final RestClient restClient;
     private final boolean enabled;
     private final String apiKey;
     private final String apiSecret;
     private final String brand;
+    private final String from;
     private final int codeLength;
 
     public VonageVerifyHttpClient(
@@ -32,19 +34,20 @@ public class VonageVerifyHttpClient implements VonageVerifyClient {
         @Value("${app.auth.vonage-verify.api-key:}") String apiKey,
         @Value("${app.auth.vonage-verify.api-secret:}") String apiSecret,
         @Value("${app.auth.vonage-verify.brand:Plura}") String brand,
+        @Value("${app.auth.vonage-verify.from:}") String from,
         @Value("${app.auth.vonage-verify.code-length:6}") int codeLength
     ) {
         this.enabled = enabled;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.apiSecret = apiSecret == null ? "" : apiSecret.trim();
         this.brand = brand == null || brand.isBlank() ? "Plura" : brand.trim();
+        this.from = from == null || from.isBlank() ? null : from.trim();
         this.codeLength = codeLength;
         this.restClient = RestClient.builder()
             .baseUrl(baseUrl == null || baseUrl.isBlank() ? "https://api.nexmo.com" : baseUrl.trim())
             .build();
     }
 
-    @Override
     public String startSmsVerification(String phoneNumber) {
         ensureConfigured();
         VonageVerificationStartResponse response = restClient.post()
@@ -54,7 +57,7 @@ public class VonageVerifyHttpClient implements VonageVerifyClient {
             .body(new VonageVerificationStartRequest(
                 brand,
                 normalizeCodeLength(),
-                List.of(new VonageWorkflowStep("sms", phoneNumber))
+                List.of(new VonageWorkflowStep("sms", phoneNumber, from))
             ))
             .retrieve()
             .onStatus(HttpStatusCode::isError, (request, httpResponse) -> {
@@ -73,7 +76,6 @@ public class VonageVerifyHttpClient implements VonageVerifyClient {
         return response.requestId();
     }
 
-    @Override
     public boolean checkSmsVerification(String requestId, String code) {
         ensureConfigured();
         try {
@@ -126,7 +128,11 @@ public class VonageVerifyHttpClient implements VonageVerifyClient {
         List<VonageWorkflowStep> workflow
     ) {}
 
-    private record VonageWorkflowStep(String channel, String to) {}
+    private record VonageWorkflowStep(
+        String channel,
+        String to,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String from
+    ) {}
 
     private record VonageVerificationStartResponse(@JsonProperty("request_id") String requestId) {}
 

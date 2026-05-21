@@ -210,16 +210,16 @@ function ProfesionalSidebar({
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-x-hidden overflow-y-auto', collapsed ? 'px-1.5 py-5' : 'px-2.5 py-5')}>
+      <nav className={cn('flex-1 overflow-x-hidden overflow-y-auto', collapsed ? 'px-1.5 py-4' : 'px-2.5 py-4')}>
         {menuSections.map((section, sectionIndex) => (
-          <div key={section.label} className={cn(collapsed ? 'mb-6' : 'mb-6')}>
+          <div key={section.label} className={cn(collapsed ? 'mb-5' : 'mb-5')}>
             {collapsed && sectionIndex > 0 ? (
-              <div className="mx-auto mb-6 h-px w-9 bg-[#E2E8F0]" />
+              <div className="mx-auto mb-5 h-px w-9 bg-[#E2E8F0]" />
             ) : null}
-            <p className={cn('mb-4 px-2 text-xs font-semibold uppercase tracking-normal text-[#64748B]', collapsed && 'hidden')}>
+            <p className={cn('mb-3 px-2 text-xs font-semibold uppercase tracking-normal text-[#64748B]', collapsed && 'hidden')}>
               {section.label}
             </p>
-            <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
+            <div className={cn(collapsed ? 'space-y-2.5' : 'space-y-2')}>
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const showsFeatureHint = item.featureKey
@@ -320,9 +320,9 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto overflow-x-hidden py-5', collapsed ? 'px-1.5' : 'px-2.5')}>
-        <div className={cn('mx-auto mb-4 h-px bg-[#E2E8F0]', collapsed ? 'w-9' : 'w-full')} />
-        <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
+      <div className={cn('mt-auto overflow-x-hidden py-4', collapsed ? 'px-1.5' : 'px-2.5')}>
+        <div className={cn('mx-auto mb-3 h-px bg-[#E2E8F0]', collapsed ? 'w-9' : 'w-full')} />
+        <div className={cn(collapsed ? 'space-y-2.5' : 'space-y-2')}>
           {onToggleCollapsed ? (
             <button
               type="button"

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
@@ -8,12 +9,14 @@ import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.BooleanCapability;
 import com.plura.plurabackend.professional.plan.LimitCapability;
 import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,6 +27,64 @@ import org.springframework.web.server.ResponseStatusException;
  * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
  */
 class ProfileServiceCatalogSupportTest {
+
+    /**
+     * Escenario: bloquea el primer servicio cuando falta verificar email.
+     * El objetivo es dejar explicita la regla vigente de alta inicial del catalogo.
+     */
+    @Test
+    void blocksFirstServiceCreationWhenEmailIsNotVerified() {
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setId(11L);
+        profile.setUser(new User());
+        ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
+        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(0L);
+
+        ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
+            repository,
+            mock(ProfilePublicPageAssembler.class),
+            mock(ProfessionalSideEffectCoordinator.class),
+            mock(CategoryRepository.class),
+            mock(PlanGuardService.class),
+            mock(ImageCleanupService.class),
+            mock(ImageStorageService.class)
+        );
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> support.createService("11", profile, validServiceRequest())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Verificá tu email antes de crear tu primer servicio.", exception.getReason());
+    }
+
+    /**
+     * Escenario: permite el primer servicio con email verificado aunque el telefono siga pendiente.
+     * El objetivo es evitar que vuelva el bloqueo por SMS en alta de servicios.
+     */
+    @Test
+    void allowsFirstServiceCreationWhenEmailIsVerifiedAndPhoneIsPending() {
+        User user = new User();
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setId(11L);
+        profile.setUser(user);
+        ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
+        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(0L);
+
+        ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
+            repository,
+            mock(ProfilePublicPageAssembler.class),
+            mock(ProfessionalSideEffectCoordinator.class),
+            mock(CategoryRepository.class),
+            mock(PlanGuardService.class),
+            mock(ImageCleanupService.class),
+            mock(ImageStorageService.class)
+        );
+
+        assertDoesNotThrow(() -> support.createService("11", profile, validServiceRequest()));
+    }
 
     /**
      * Escenario: bloquea servicio creation cuando plan reached servicio limit.
@@ -105,5 +166,13 @@ class ProfileServiceCatalogSupportTest {
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         assertEquals("Este extra no está habilitado", exception.getReason());
+    }
+
+    private ProfesionalServiceRequest validServiceRequest() {
+        ProfesionalServiceRequest request = new ProfesionalServiceRequest();
+        request.setName("Corte");
+        request.setPrice(java.math.BigDecimal.TEN);
+        request.setDuration("30 min");
+        return request;
     }
 }

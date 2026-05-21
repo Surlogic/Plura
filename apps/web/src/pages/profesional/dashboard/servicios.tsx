@@ -12,7 +12,6 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
-import { confirmPhoneVerification, sendPhoneVerification } from '@/services/phoneVerification';
 import type { BookingProcessingFeeMode, ServicePaymentType } from '@/types/professional';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
@@ -186,10 +185,6 @@ export default function ProfesionalServicesBuilderPage() {
   const [saveError, setSaveError] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
-  const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
-  const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
   const canUseOnlinePayments = featureAccess.onlinePayments;
   const maxServices = profile?.professionalEntitlements?.maxServices ?? 15;
 
@@ -340,8 +335,8 @@ export default function ProfesionalServicesBuilderPage() {
       setSaveError(true);
       return false;
     }
-    if (!editingId && services.length === 0 && (!profile?.emailVerified || !profile?.phoneVerified)) {
-      setSaveMessage('Verificá email y teléfono antes de crear tu primer servicio.');
+    if (!editingId && services.length === 0 && !profile?.emailVerified) {
+      setSaveMessage('Verificá tu email antes de crear tu primer servicio.');
       setSaveError(true);
       return false;
     }
@@ -518,7 +513,7 @@ export default function ProfesionalServicesBuilderPage() {
   const serviceCapacityLabel = maxServices >= PRACTICAL_UNLIMITED ? 'Ilimitados' : `${serviceCount}/${maxServices}`;
   const hasReachedServiceLimit = !editingId && services.length >= maxServices;
   const requiresFirstServiceVerification =
-    !editingId && serviceCount === 0 && (!profile?.emailVerified || !profile?.phoneVerified);
+    !editingId && serviceCount === 0 && !profile?.emailVerified;
   const isDirty = useMemo(() => {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
@@ -543,45 +538,6 @@ export default function ProfesionalServicesBuilderPage() {
     setSaveMessage(null);
     setSaveError(false);
   }, [clearImageSelection, initialDraft, initialEditingId]);
-
-  const handleSendPhoneVerification = async () => {
-    if (!profile?.phoneNumber) {
-      setPhoneVerificationMessage('Tu cuenta no tiene un teléfono cargado para verificar.');
-      return;
-    }
-
-    setIsSendingPhoneVerification(true);
-    setPhoneVerificationMessage(null);
-    try {
-      const response = await sendPhoneVerification(profile.phoneNumber);
-      setPhoneVerificationMessage(response.message);
-    } catch (error) {
-      setPhoneVerificationMessage(extractServiceApiMessage(error, 'No se pudo enviar el código.'));
-    } finally {
-      setIsSendingPhoneVerification(false);
-    }
-  };
-
-  const handleConfirmPhoneVerification = async () => {
-    const code = phoneVerificationCode.trim();
-    if (!code) {
-      setPhoneVerificationMessage('Ingresá el código recibido.');
-      return;
-    }
-
-    setIsConfirmingPhoneVerification(true);
-    setPhoneVerificationMessage(null);
-    try {
-      await confirmPhoneVerification(code);
-      setPhoneVerificationCode('');
-      setPhoneVerificationMessage('Teléfono verificado correctamente.');
-      await refreshProfile();
-    } catch (error) {
-      setPhoneVerificationMessage(extractServiceApiMessage(error, 'No se pudo verificar el código.'));
-    } finally {
-      setIsConfirmingPhoneVerification(false);
-    }
-  };
 
   const fallbackServiceCategoryName = useMemo(() => {
     const profileCategoryName = profile?.categories?.[0]?.name?.trim();
@@ -832,64 +788,16 @@ export default function ProfesionalServicesBuilderPage() {
                           </p>
                         ) : null}
                         {requiresFirstServiceVerification ? (
-                          <div className="mt-4 space-y-4 rounded-[18px] border border-amber-200 bg-amber-50/70 p-4">
-                            {!profile?.emailVerified ? (
-                              <EmailVerificationPanel
-                                email={profile?.email}
-                                emailVerified={profile?.emailVerified}
-                                onStatusChanged={refreshProfile}
-                                tone="professional"
-                                variant="banner"
-                                title="Verificá tu email"
-                                description="Necesitás verificar tu email antes de crear tu primer servicio."
-                              />
-                            ) : null}
-
-                            {!profile?.phoneVerified ? (
-                              <div className="rounded-[16px] border border-white/80 bg-white/90 p-4">
-                                <p className="text-sm font-semibold text-[#0E2A47]">
-                                  Verificá tu teléfono
-                                </p>
-                                <p className="mt-1 text-xs text-[#64748B]">
-                                  Necesitás verificar el teléfono de tu cuenta antes de crear tu primer servicio.
-                                </p>
-                                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                  <Button
-                                    type="button"
-                                    variant="quiet"
-                                    onClick={() => void handleSendPhoneVerification()}
-                                    disabled={isSendingPhoneVerification || isConfirmingPhoneVerification}
-                                  >
-                                    {isSendingPhoneVerification ? 'Enviando...' : 'Enviar código'}
-                                  </Button>
-                                  <input
-                                    className={inputClassName}
-                                    inputMode="numeric"
-                                    maxLength={10}
-                                    value={phoneVerificationCode}
-                                    onChange={(event) => setPhoneVerificationCode(event.target.value)}
-                                    placeholder="Código SMS"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="brand"
-                                    onClick={() => void handleConfirmPhoneVerification()}
-                                    disabled={
-                                      isSendingPhoneVerification
-                                      || isConfirmingPhoneVerification
-                                      || !phoneVerificationCode.trim()
-                                    }
-                                  >
-                                    {isConfirmingPhoneVerification ? 'Verificando...' : 'Verificar'}
-                                  </Button>
-                                </div>
-                                {phoneVerificationMessage ? (
-                                  <p className="mt-2 text-xs font-medium text-[#0E2A47]">
-                                    {phoneVerificationMessage}
-                                  </p>
-                                ) : null}
-                              </div>
-                            ) : null}
+                          <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50/70 p-4">
+                            <EmailVerificationPanel
+                              email={profile?.email}
+                              emailVerified={profile?.emailVerified}
+                              onStatusChanged={refreshProfile}
+                              tone="professional"
+                              variant="banner"
+                              title="Verificá tu email"
+                              description="Necesitás verificar tu email antes de crear tu primer servicio."
+                            />
                           </div>
                         ) : null}
                         <div className="mt-4 grid gap-4">

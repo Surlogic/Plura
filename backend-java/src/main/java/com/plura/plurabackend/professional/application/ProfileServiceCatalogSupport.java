@@ -78,7 +78,7 @@ public class ProfileServiceCatalogSupport {
     ) {
         long currentServiceCount = profesionalServiceRepository.countByProfessional_Id(profile.getId());
         if (currentServiceCount == 0) {
-            ensureFirstServiceCreationIsVerified(profile);
+            ensureFirstServiceCreationEmailIsVerified(profile);
         }
         long nextServiceCount = currentServiceCount + 1;
         planGuardService.requireLimitNotExceeded(rawUserId, LimitCapability.MAX_SERVICES, nextServiceCount);
@@ -203,13 +203,10 @@ public class ProfileServiceCatalogSupport {
         }
     }
 
-    private void ensureFirstServiceCreationIsVerified(ProfessionalProfile profile) {
+    private void ensureFirstServiceCreationEmailIsVerified(ProfessionalProfile profile) {
         User user = profile.getUser();
         if (user == null || user.getEmailVerifiedAt() == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu email antes de crear tu primer servicio.");
-        }
-        if (user.getPhoneVerifiedAt() == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu teléfono antes de crear tu primer servicio.");
         }
     }
 

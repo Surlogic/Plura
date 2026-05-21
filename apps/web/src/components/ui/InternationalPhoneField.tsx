@@ -3,6 +3,7 @@ import {
   buildInternationalPhoneNumber,
   DEFAULT_PHONE_COUNTRY_CODE,
   getPhoneCountryOption,
+  getPhoneNationalDigitLength,
   PHONE_COUNTRY_OPTIONS,
   sanitizePhoneLocalNumber,
   splitInternationalPhoneNumber,
@@ -45,18 +46,26 @@ export default function InternationalPhoneField({
     if (value.trim()) {
       setCountryCode(parsed.countryCode);
     }
-    setNationalNumber(parsed.nationalNumber);
+    setNationalNumber(
+      sanitizePhoneLocalNumber(parsed.nationalNumber).slice(0, getPhoneNationalDigitLength(parsed.countryCode)),
+    );
   }, [countryCode, value]);
 
   const selectedCountry = getPhoneCountryOption(countryCode);
+  const selectedNationalLength = getPhoneNationalDigitLength(selectedCountry.code);
+
+  const limitNationalNumber = (nextCountryCode: string, nextValue: string) =>
+    sanitizePhoneLocalNumber(nextValue).slice(0, getPhoneNationalDigitLength(nextCountryCode));
 
   const handleCountryChange = (nextCountryCode: string) => {
+    const nextNationalNumber = limitNationalNumber(nextCountryCode, nationalNumber);
     setCountryCode(nextCountryCode);
-    onChange(buildInternationalPhoneNumber(nextCountryCode, nationalNumber));
+    setNationalNumber(nextNationalNumber);
+    onChange(buildInternationalPhoneNumber(nextCountryCode, nextNationalNumber));
   };
 
   const handleNumberChange = (nextValue: string) => {
-    const nextNationalNumber = sanitizePhoneLocalNumber(nextValue);
+    const nextNationalNumber = limitNationalNumber(countryCode, nextValue);
     setNationalNumber(nextNationalNumber);
     onChange(buildInternationalPhoneNumber(countryCode, nextNationalNumber));
   };
@@ -87,6 +96,9 @@ export default function InternationalPhoneField({
         onChange={(event) => handleNumberChange(event.target.value)}
         onBlur={onBlur}
         placeholder={inputPlaceholder || selectedCountry.exampleNational}
+        minLength={selectedNationalLength}
+        maxLength={selectedNationalLength}
+        pattern={`\\d{${selectedNationalLength}}`}
         disabled={disabled}
         required={required}
         aria-label={inputAriaLabel}
@@ -94,4 +106,3 @@ export default function InternationalPhoneField({
     </div>
   );
 }
-

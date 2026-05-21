@@ -11,6 +11,7 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import { isValidInternationalPhoneNumber } from '@/lib/phone/internationalPhone';
 import type { ClientProfile } from '@/types/client';
 import api from '@/services/api';
 import {
@@ -141,23 +142,22 @@ export default function ReservationAuthOverlay({
 
     return {
       confirmEmail:
-        confirmEmail.length > 0 && confirmEmail === email ? '' : 'Los correos no coinciden.',
+        confirmEmail.length > 0 && confirmEmail === email ? '' : 'Los e-mails no coinciden.',
       confirmPassword:
         registerForm.confirmPassword.length > 0 &&
         registerForm.confirmPassword === registerForm.password
           ? ''
           : 'Las contraseñas no coinciden.',
-      email: emailPattern.test(email) ? '' : 'Email inválido.',
+      email: emailPattern.test(email) ? '' : 'E-Mail inválido.',
       fullName:
         registerForm.fullName.trim().length >= 3 ? '' : 'Ingresá tu nombre completo.',
       password:
         registerForm.password.trim().length >= 8
           ? ''
           : 'La contraseña debe tener al menos 8 caracteres.',
-      phoneNumber:
-        registerForm.phoneNumber.replace(/\D/g, '').length >= 8
-          ? ''
-          : 'Ingresá un celular válido.',
+      phoneNumber: isValidInternationalPhoneNumber(registerForm.phoneNumber)
+        ? ''
+        : 'Ingresá un celular válido para el país seleccionado.',
     };
   }, [registerForm]);
 
@@ -270,6 +270,31 @@ export default function ReservationAuthOverlay({
   const fullRegisterHref = '/cliente/auth/register?redirect=confirm-reservation';
   const inputClassName =
     'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  const registerEmailValue = registerForm.email.trim().toLowerCase();
+  const registerConfirmEmailValue = registerForm.confirmEmail.trim().toLowerCase();
+  const registerEmailIsValid = emailPattern.test(registerEmailValue);
+  const registerEmailsMatch =
+    registerConfirmEmailValue.length > 0 &&
+    registerEmailIsValid &&
+    registerConfirmEmailValue === registerEmailValue;
+  const showRegisterEmailError =
+    registerEmailValue.length > 0 && Boolean(registerValidation.email);
+  const showRegisterConfirmEmailError =
+    registerConfirmEmailValue.length > 0 && Boolean(registerValidation.confirmEmail);
+  const registerEmailInputClass = `${inputClassName}${
+    showRegisterEmailError
+      ? ' border-red-300 text-red-700 focus:ring-red-200'
+      : registerEmailIsValid && registerEmailValue.length > 0
+        ? ' border-emerald-400 text-emerald-700 focus:ring-emerald-100'
+        : ''
+  }`;
+  const registerConfirmEmailInputClass = `${inputClassName}${
+    showRegisterConfirmEmailError
+      ? ' border-red-300 text-red-700 focus:ring-red-200'
+      : registerEmailsMatch
+        ? ' border-emerald-400 text-emerald-700 focus:ring-emerald-100'
+        : ''
+  }`;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-6">
@@ -382,30 +407,39 @@ export default function ReservationAuthOverlay({
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-[color:var(--ink)]">Email</label>
+                    <label className="text-sm font-medium text-[color:var(--ink)]">E-Mail</label>
                     <input
-                      className={inputClassName}
-                      placeholder="tucorreo@gmail.com"
+                      className={registerEmailInputClass}
+                      placeholder="nombre@dominio.com"
                       type="email"
                       name="email"
                       value={registerForm.email}
                       onChange={handleRegisterChange}
                       required
                     />
+                    {showRegisterEmailError ? (
+                      <p className="text-xs text-red-600">{registerValidation.email}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-[color:var(--ink)]">
-                      Confirmar email
+                      Confirmar E-Mail
                     </label>
                     <input
-                      className={inputClassName}
-                      placeholder="tucorreo@gmail.com"
+                      className={registerConfirmEmailInputClass}
+                      placeholder="nombre@dominio.com"
                       type="email"
                       name="confirmEmail"
                       value={registerForm.confirmEmail}
                       onChange={handleRegisterChange}
                       required
                     />
+                    {showRegisterConfirmEmailError ? (
+                      <p className="text-xs text-red-600">{registerValidation.confirmEmail}</p>
+                    ) : null}
+                    {registerEmailsMatch ? (
+                      <p className="text-xs font-medium text-emerald-600">Los e-mails coinciden.</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -422,7 +456,6 @@ export default function ReservationAuthOverlay({
                     required
                     selectClassName={inputClassName}
                     inputClassName={inputClassName}
-                    inputPlaceholder="11 2345 6789"
                   />
                 </div>
 
@@ -470,11 +503,11 @@ export default function ReservationAuthOverlay({
             ) : (
               <form className="mt-6 space-y-4" onSubmit={handleLoginSubmit}>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Email</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">E-Mail</label>
                   <input
                     ref={firstInputRef}
                     className={inputClassName}
-                    placeholder="tucorreo@gmail.com"
+                    placeholder="nombre@dominio.com"
                     type="email"
                     name="email"
                     value={loginForm.email}

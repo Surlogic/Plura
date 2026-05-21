@@ -8,6 +8,7 @@ import { Marker, type MapRef } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import PasswordInput from '@/components/auth/PasswordInput';
 import MapView from '@/components/map/MapView';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -371,6 +372,10 @@ export default function ProfesionalRegisterPage() {
     serviceDescription: '',
   });
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    password: false,
+    confirmPassword: false,
+  });
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
   const [schedulePauses, setSchedulePauses] = useState<SchedulePause[]>([]);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
@@ -402,6 +407,11 @@ export default function ProfesionalRegisterPage() {
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailIsValid = emailPattern.test(emailValue);
+  const emailsMatch =
+    confirmEmailValue.length > 0 &&
+    emailIsValid &&
+    confirmEmailValue === emailValue;
   const requiresLocation = form.tipoCliente === 'LOCAL';
 
   useEffect(() => {
@@ -724,10 +734,10 @@ export default function ProfesionalRegisterPage() {
 
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
-    email: emailPattern.test(emailValue) ? remoteFieldErrors.email || '' : 'Email inválido.',
+    email: emailIsValid ? remoteFieldErrors.email || '' : 'E-Mail inválido.',
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
-      : 'Los correos no coinciden.',
+      : 'Los e-mails no coinciden.',
     password: isOAuthSetup || passwordValid ? '' : 'Mínimo 8 caracteres.',
     confirmPassword: isOAuthSetup || (form.confirmPassword.length > 0 && form.confirmPassword === form.password)
       ? ''
@@ -751,8 +761,27 @@ export default function ProfesionalRegisterPage() {
     serviceDescription: '',
   };
 
-  const inputClass = (field: keyof RegisterForm) =>
-    `${inputBaseClassName}${touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''}`;
+  const showConfirmEmailError =
+    Boolean(validationErrors.confirmEmail) &&
+    (touched.confirmEmail || form.confirmEmail.trim().length > 0 || touched.email);
+  const inputClass = (field: keyof RegisterForm) => {
+    const hasError =
+      field === 'confirmEmail'
+        ? showConfirmEmailError
+        : touched[field] && Boolean(validationErrors[field]);
+    const hasSuccess =
+      !hasError &&
+      ((field === 'email' && touched.email && !validationErrors.email && emailValue.length > 0) ||
+        (field === 'confirmEmail' && emailsMatch));
+
+    return `${inputBaseClassName}${
+      hasError
+        ? ' border-red-300 text-red-700 focus:ring-red-200'
+        : hasSuccess
+          ? ' border-emerald-400 text-emerald-700 focus:ring-emerald-100'
+          : ''
+    }`;
+  };
   const textAreaClass = (field: keyof RegisterForm) =>
     `${textAreaClassName}${touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''}`;
 
@@ -1594,6 +1623,15 @@ export default function ProfesionalRegisterPage() {
       <p className="text-xs text-red-600">{validationErrors[field]}</p>
     ) : null
   );
+  const renderConfirmEmailStatus = () => {
+    if (showConfirmEmailError) {
+      return <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>;
+    }
+    if (emailsMatch) {
+      return <p className="text-xs font-medium text-emerald-600">Los e-mails coinciden.</p>;
+    }
+    return null;
+  };
 
   const stepHeader = (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-2 text-center">
@@ -1706,10 +1744,10 @@ export default function ProfesionalRegisterPage() {
               </div>
               <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
+                <label className="text-sm font-semibold text-[color:var(--ink)]">E-Mail</label>
                 <input
                   className={inputClass('email')}
-                  placeholder="tucorreo@gmail.com"
+                  placeholder="nombre@dominio.com"
                   type="email"
                   name="email"
                   value={form.email}
@@ -1719,26 +1757,29 @@ export default function ProfesionalRegisterPage() {
                 {renderError('email')}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar email</label>
+                <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar E-Mail</label>
                 <input
                   className={inputClass('confirmEmail')}
-                  placeholder="tucorreo@gmail.com"
+                  placeholder="nombre@dominio.com"
                   type="email"
                   name="confirmEmail"
                   value={form.confirmEmail}
                   onChange={handleChange}
                   onBlur={handleBlur}
                 />
-                {renderError('confirmEmail')}
+                {renderConfirmEmailStatus()}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
-                <input
+                <PasswordInput
                   className={inputClass('password')}
                   placeholder="mínimo 8 caracteres"
-                  type="password"
                   name="password"
                   value={form.password}
+                  isVisible={visiblePasswords.password}
+                  onToggleVisibility={() =>
+                    setVisiblePasswords((prev) => ({ ...prev, password: !prev.password }))
+                  }
                   onChange={handleChange}
                   onBlur={handleBlur}
                 />
@@ -1746,12 +1787,18 @@ export default function ProfesionalRegisterPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
-                <input
+                <PasswordInput
                   className={inputClass('confirmPassword')}
                   placeholder="repetir contraseña"
-                  type="password"
                   name="confirmPassword"
                   value={form.confirmPassword}
+                  isVisible={visiblePasswords.confirmPassword}
+                  onToggleVisibility={() =>
+                    setVisiblePasswords((prev) => ({
+                      ...prev,
+                      confirmPassword: !prev.confirmPassword,
+                    }))
+                  }
                   onChange={handleChange}
                   onBlur={handleBlur}
                 />

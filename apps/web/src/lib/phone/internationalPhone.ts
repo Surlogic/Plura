@@ -6,6 +6,15 @@ export type PhoneCountryOption = {
   exampleNational: string;
 };
 
+export type PhoneValidationResult = {
+  valid: boolean;
+  countryCode: string;
+  nationalNumber: string;
+  expectedLength: number;
+  actualLength: number;
+  exampleNational: string;
+};
+
 export const DEFAULT_PHONE_COUNTRY_CODE = 'UY';
 
 export const PHONE_COUNTRY_OPTIONS: PhoneCountryOption[] = [
@@ -47,6 +56,9 @@ export const sanitizePhoneLocalNumber = (value: string) => value.replace(/\D/g, 
 
 export const getPhoneCountryOption = (countryCode: string | null | undefined) =>
   countriesByCode.get((countryCode || '').toUpperCase()) || countriesByCode.get(DEFAULT_PHONE_COUNTRY_CODE)!;
+
+export const getPhoneNationalDigitLength = (countryCode: string | null | undefined) =>
+  sanitizePhoneLocalNumber(getPhoneCountryOption(countryCode).exampleNational).length;
 
 export const buildInternationalPhoneNumber = (countryCode: string, nationalNumber: string) => {
   const country = getPhoneCountryOption(countryCode);
@@ -93,3 +105,28 @@ export const splitInternationalPhoneNumber = (
     nationalNumber,
   };
 };
+
+export const validateInternationalPhoneNumber = (
+  value: string,
+  fallbackCountryCode = DEFAULT_PHONE_COUNTRY_CODE,
+): PhoneValidationResult => {
+  const parsed = splitInternationalPhoneNumber(value, fallbackCountryCode);
+  const country = getPhoneCountryOption(parsed.countryCode);
+  const nationalNumber = sanitizePhoneLocalNumber(parsed.nationalNumber);
+  const expectedLength = getPhoneNationalDigitLength(country.code);
+  const actualLength = nationalNumber.length;
+
+  return {
+    valid: actualLength === expectedLength,
+    countryCode: country.code,
+    nationalNumber,
+    expectedLength,
+    actualLength,
+    exampleNational: country.exampleNational,
+  };
+};
+
+export const isValidInternationalPhoneNumber = (
+  value: string,
+  fallbackCountryCode = DEFAULT_PHONE_COUNTRY_CODE,
+) => validateInternationalPhoneNumber(value, fallbackCountryCode).valid;

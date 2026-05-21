@@ -8,6 +8,7 @@ import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import PasswordInput from '@/components/auth/PasswordInput';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -22,6 +23,7 @@ import {
   selectAuthContext,
   type AuthMeResponse,
 } from '@/lib/auth/contexts';
+import { isValidInternationalPhoneNumber } from '@/lib/phone/internationalPhone';
 import { getPendingReservation } from '@/services/pendingReservation';
 
 export default function ClienteRegisterPage() {
@@ -52,6 +54,10 @@ export default function ClienteRegisterPage() {
     email: false,
     confirmEmail: false,
     phoneNumber: false,
+    password: false,
+    confirmPassword: false,
+  });
+  const [visiblePasswords, setVisiblePasswords] = useState({
     password: false,
     confirmPassword: false,
   });
@@ -166,6 +172,12 @@ export default function ClienteRegisterPage() {
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailIsValid = isAddingClientContext || emailPattern.test(emailValue);
+  const emailsMatch =
+    !isAddingClientContext &&
+    confirmEmailValue.length > 0 &&
+    emailPattern.test(emailValue) &&
+    confirmEmailValue === emailValue;
   const passwordRules: Array<{
     id: string;
     label: string;
@@ -184,22 +196,40 @@ export default function ClienteRegisterPage() {
   const passwordValid = passwordChecks.every((rule) => rule.valid);
   const validationErrors = {
     fullName: isAddingClientContext || form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
-    email: isAddingClientContext || emailPattern.test(emailValue) ? '' : 'Email inválido.',
+    email: emailIsValid ? '' : 'E-Mail inválido.',
     confirmEmail: isAddingClientContext || (confirmEmailValue.length > 0 && confirmEmailValue === emailValue)
       ? ''
-      : 'Los correos no coinciden.',
-    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
+      : 'Los e-mails no coinciden.',
+    phoneNumber: isValidInternationalPhoneNumber(form.phoneNumber) ? '' : 'Ingresá un número válido para el país seleccionado.',
     password: isAddingClientContext || passwordValid ? '' : 'La contraseña no cumple los requisitos.',
     confirmPassword: isAddingClientContext || (form.confirmPassword.length > 0 && form.confirmPassword === form.password)
       ? ''
       : 'Las contraseñas no coinciden.',
   };
   const isFormValid = Object.values(validationErrors).every((value) => value === '');
+  const showConfirmEmailError =
+    !isAddingClientContext &&
+    Boolean(validationErrors.confirmEmail) &&
+    (touched.confirmEmail || form.confirmEmail.trim().length > 0 || touched.email);
 
-  const inputClass = (field: keyof typeof validationErrors) =>
-    `${inputClassName}${
-      touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''
+  const inputClass = (field: keyof typeof validationErrors) => {
+    const hasError =
+      field === 'confirmEmail'
+        ? showConfirmEmailError
+        : touched[field] && Boolean(validationErrors[field]);
+    const hasSuccess =
+      !hasError &&
+      ((field === 'email' && touched.email && emailIsValid && emailValue.length > 0) ||
+        (field === 'confirmEmail' && emailsMatch));
+
+    return `${inputClassName}${
+      hasError
+        ? ' border-red-300 text-red-700 focus:ring-red-200'
+        : hasSuccess
+          ? ' border-emerald-400 text-emerald-700 focus:ring-emerald-100'
+          : ''
     }`;
+  };
 
   const redirectAfterClientContextSelected = async () => {
     if (redirectIntent === 'confirm-reservation') {
@@ -267,8 +297,8 @@ export default function ClienteRegisterPage() {
       return;
     }
 
-    if (form.email !== form.confirmEmail) {
-      setErrorMessage('Los correos no coinciden.');
+    if (emailValue !== confirmEmailValue) {
+      setErrorMessage('Los e-mails no coinciden.');
       return;
     }
 
@@ -406,10 +436,10 @@ export default function ClienteRegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
+                    <label className="text-sm font-medium text-[color:var(--ink)]">E-Mail</label>
                     <input
                       className={`${inputClassName} bg-[color:var(--surface-muted)]`}
-                      placeholder="tucorreo@gmail.com"
+                      placeholder="nombre@dominio.com"
                       type="email"
                       name="email"
                       value={form.email}
@@ -427,7 +457,6 @@ export default function ClienteRegisterPage() {
                       required
                       selectClassName={inputClass('phoneNumber')}
                       inputClassName={inputClass('phoneNumber')}
-                      inputPlaceholder="11 2345 6789"
                     />
                     <p className="text-xs text-[color:var(--ink-faint)]">
                       Seleccioná tu país y escribí el número sin el código internacional.
@@ -458,10 +487,10 @@ export default function ClienteRegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">E-Mail</label>
                   <input
                     className={inputClass('email')}
-                    placeholder="tucorreo@gmail.com"
+                    placeholder="nombre@dominio.com"
                     type="email"
                     name="email"
                     value={form.email}
@@ -475,10 +504,10 @@ export default function ClienteRegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar E-Mail</label>
                   <input
                     className={inputClass('confirmEmail')}
-                    placeholder="tucorreo@gmail.com"
+                    placeholder="nombre@dominio.com"
                     type="email"
                     name="confirmEmail"
                     value={form.confirmEmail}
@@ -486,8 +515,11 @@ export default function ClienteRegisterPage() {
                     onBlur={handleBlur}
                     required
                   />
-                  {touched.confirmEmail && validationErrors.confirmEmail ? (
+                  {showConfirmEmailError ? (
                     <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>
+                  ) : null}
+                  {emailsMatch ? (
+                    <p className="text-xs font-medium text-emerald-600">Los e-mails coinciden.</p>
                   ) : null}
                 </div>
 
@@ -500,7 +532,6 @@ export default function ClienteRegisterPage() {
                     required
                     selectClassName={inputClass('phoneNumber')}
                     inputClassName={inputClass('phoneNumber')}
-                    inputPlaceholder="11 2345 6789"
                   />
                   <p className="text-xs text-[color:var(--ink-faint)]">
                     Seleccioná tu país y escribí el número sin el código internacional.
@@ -512,12 +543,15 @@ export default function ClienteRegisterPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className={inputClass('password')}
                     placeholder="••••••••"
                     name="password"
                     value={form.password}
+                    isVisible={visiblePasswords.password}
+                    onToggleVisibility={() =>
+                      setVisiblePasswords((prev) => ({ ...prev, password: !prev.password }))
+                    }
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
@@ -545,12 +579,18 @@ export default function ClienteRegisterPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar contraseña</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className={inputClass('confirmPassword')}
                     placeholder="••••••••"
                     name="confirmPassword"
                     value={form.confirmPassword}
+                    isVisible={visiblePasswords.confirmPassword}
+                    onToggleVisibility={() =>
+                      setVisiblePasswords((prev) => ({
+                        ...prev,
+                        confirmPassword: !prev.confirmPassword,
+                      }))
+                    }
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required

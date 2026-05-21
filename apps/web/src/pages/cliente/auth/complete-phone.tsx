@@ -11,6 +11,7 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { isValidInternationalPhoneNumber } from '@/lib/phone/internationalPhone';
 import { getPendingReservation } from '@/services/pendingReservation';
 
 const resolveApiMessage = (error: unknown, fallback: string) => {
@@ -29,7 +30,7 @@ export default function ClienteCompletePhonePage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canSubmit = phoneNumber.replace(/\D/g, '').length >= 8;
+  const canSubmit = isValidInternationalPhoneNumber(phoneNumber);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -85,7 +86,6 @@ export default function ClienteCompletePhonePage() {
                 required
                 selectClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
                 inputClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
-                inputPlaceholder="99 123 456"
               />
               <p className="text-xs text-[color:var(--ink-faint)]">
                 Elegí tu país y cargá el número sin el prefijo internacional.

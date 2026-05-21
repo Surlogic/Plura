@@ -19,9 +19,9 @@ export default function ProfesionalAccessPage() {
     <ProfessionalDashboardShell profile={profile} active="Acceso">
       <div className="space-y-6">
         <DashboardPageHeader
-          eyebrow="Cuenta"
-          title="Acceso y sesión"
-          description="Revisá tu identidad de acceso al dashboard y cerrá sesión desde un lugar dedicado."
+          eyebrow="CUENTA"
+          title="Acceso"
+          description="Gestioná sesión e identidad de acceso."
           meta={
             <DashboardHeaderBadge tone="accent">
               Dashboard profesional

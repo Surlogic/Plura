@@ -133,7 +133,7 @@ export default function ProfesionalResenasPage() {
       setReportingReviewId(null);
       setReportReason('SPAM');
       setReportNote('');
-      setActionSuccess('Reporte enviado a internal ops.');
+      setActionSuccess('Reporte enviado para revisión.');
       await reloadReviewsAndProfile();
     } catch (error) {
       const message =
@@ -148,9 +148,9 @@ export default function ProfesionalResenasPage() {
     <ProfessionalDashboardShell profile={profile} active="Reseñas">
       <div className="space-y-6">
               <DashboardPageHeader
-                eyebrow="Reseñas"
-                title="Reseñas de clientes"
-                description="Gestioná visibilidad pública y reportes sin perder de vista el estado reputacional del negocio."
+                eyebrow="REPUTACIÓN"
+                title="Reseñas"
+                description="Revisá la opinión de tus clientes y gestioná reportes."
                 meta={(
                   <>
                     <DashboardHeaderBadge tone="accent">
@@ -301,7 +301,7 @@ export default function ProfesionalResenasPage() {
                             Reportar reseña
                           </p>
                           <p className="mt-1 text-sm text-[#475569]">
-                            Internal ops revisará el reporte. Reportar no elimina ni oculta automáticamente la reseña.
+                            Nuestro equipo revisará el reporte. Reportar no oculta la reseña automáticamente.
                           </p>
 
                           <label className="mt-3 block text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">

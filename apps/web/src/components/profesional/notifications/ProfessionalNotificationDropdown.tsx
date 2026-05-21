@@ -69,7 +69,7 @@ export default function ProfessionalNotificationDropdown({
           onClick={onViewAll}
           className="rounded-full px-2 py-1 text-xs font-semibold text-[color:var(--primary)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
         >
-          Ver inbox
+          Ver actividad
         </button>
       </div>
 
@@ -187,7 +187,7 @@ export default function ProfessionalNotificationDropdown({
             : 'No hay notificaciones sin leer en este momento.'}
         </p>
         <Button type="button" size="sm" variant="secondary" onClick={onViewAll}>
-          Ver inbox
+          Ver actividad
         </Button>
       </div>
     </Card>

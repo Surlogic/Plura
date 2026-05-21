@@ -105,7 +105,7 @@ export default function ProfessionalNotificationInboxItem({
               onClick={() => onMarkAsRead(item.id)}
               disabled={isMarkingAsRead}
             >
-              {isMarkingAsRead ? 'Marcando...' : 'Marcar leida'}
+              {isMarkingAsRead ? 'Marcando...' : 'Marcar leída'}
             </Button>
           ) : null}
 

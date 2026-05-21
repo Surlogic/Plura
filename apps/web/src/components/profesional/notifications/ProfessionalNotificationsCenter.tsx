@@ -4,6 +4,7 @@ import {
   DashboardHeaderBadge,
   DashboardPageHeader,
   DashboardSectionHeading,
+  DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import ProfessionalNotificationsList from '@/components/profesional/notifications/ProfessionalNotificationsList';
 import ProfessionalNotificationsToolbar from '@/components/profesional/notifications/ProfessionalNotificationsToolbar';
@@ -14,7 +15,7 @@ import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalN
 
 const formatInboxMeta = (count: number, isLoading: boolean) => {
   if (isLoading) return 'Actualizando contador';
-  if (count === 0) return 'Todo al dia';
+  if (count === 0) return 'Todo al día';
   if (count === 1) return '1 sin leer';
   return `${count} sin leer`;
 };
@@ -48,20 +49,26 @@ export default function ProfessionalNotificationsCenter() {
 
   const hasUnread = unreadCount > 0 || unreadOnPage > 0;
   const hasActiveFilters = filters.status !== 'ALL' || filters.type !== 'ALL';
+  const bookingNotificationsCount = items.filter(
+    (item) => item.category === 'BOOKING' || item.type.startsWith('BOOKING_'),
+  ).length;
+  const paymentNotificationsCount = items.filter(
+    (item) => item.category === 'PAYMENT' || item.type.startsWith('PAYMENT_'),
+  ).length;
 
   return (
     <>
       <DashboardPageHeader
-        eyebrow="Inbox profesional"
-        title="Notificaciones operativas"
-        description="Revisá eventos del negocio, filtrá rápido y marcá lecturas sin salir del dashboard."
+        eyebrow="ACTIVIDAD"
+        title="Notificaciones"
+        description="Revisá novedades de reservas, pagos y cambios."
         meta={(
           <>
             <DashboardHeaderBadge tone={hasUnread ? 'warning' : 'success'}>
               {formatInboxMeta(unreadCount, isUnreadCountLoading)}
             </DashboardHeaderBadge>
             <DashboardHeaderBadge>
-              {total} en inbox
+              {total} en historial
             </DashboardHeaderBadge>
             {hasActiveFilters ? (
               <DashboardHeaderBadge tone="accent">
@@ -72,26 +79,59 @@ export default function ProfessionalNotificationsCenter() {
         )}
         actions={(
           <>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => void markAllAsRead()}
-              disabled={!hasUnread || isMarkingAll}
-            >
-              {isMarkingAll ? 'Marcando...' : 'Marcar todas como leidas'}
-            </Button>
-            <Button href="/profesional/dashboard/reservas">
+            {hasUnread ? (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => void markAllAsRead()}
+                disabled={isMarkingAll}
+              >
+                {isMarkingAll ? 'Marcando...' : 'Marcar todas como leídas'}
+              </Button>
+            ) : null}
+            <Button href="/profesional/dashboard/reservas" variant="secondary">
               Ver reservas
             </Button>
           </>
         )}
       />
 
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardStatCard
+          label="Sin leer"
+          value={`${unreadCount}`}
+          detail="Pendientes de revisar"
+          icon="notificaciones"
+          tone={hasUnread ? 'warm' : 'default'}
+        />
+        <DashboardStatCard
+          label="Total"
+          value={`${total}`}
+          detail="Eventos en historial"
+          icon="analytics"
+          tone="default"
+        />
+        <DashboardStatCard
+          label="Reservas"
+          value={`${bookingNotificationsCount}`}
+          detail="Eventos de turnos"
+          icon="reservas"
+          tone="default"
+        />
+        <DashboardStatCard
+          label="Pagos"
+          value={`${paymentNotificationsCount}`}
+          detail="Eventos de cobro"
+          icon="plan"
+          tone="default"
+        />
+      </div>
+
       <Card className="p-5 sm:p-6">
         <DashboardSectionHeading
-          eyebrow="Centro real"
-          title="Actividad del negocio"
-          description="El inbox conserva cada evento tal como llega desde backend. Podés filtrar por estado o evento, revisar el contexto y marcar lecturas sin salir del dashboard."
+          eyebrow="HISTORIAL"
+          title="Actividad"
+          description="Filtrá por estado o evento, revisá el contexto y marcá lecturas."
           action={(
             <Button type="button" size="sm" variant="secondary" onClick={() => void refresh()}>
               Actualizar

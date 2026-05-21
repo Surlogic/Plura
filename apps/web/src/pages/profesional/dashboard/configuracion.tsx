@@ -356,7 +356,7 @@ export default function ProfesionalSettingsPage() {
       setSettingsMessage(`${response.data.message}${suffix}`);
       await refreshProfile();
     } catch (error) {
-      setSettingsMessage(resolveBackendMessage(error, 'No se pudo enviar el OTP.'));
+      setSettingsMessage(resolveBackendMessage(error, 'No se pudo enviar el código de verificación.'));
       setIsSettingsError(true);
     } finally {
       setIsSendingPhoneVerification(false);
@@ -377,7 +377,7 @@ export default function ProfesionalSettingsPage() {
       setSettingsMessage('Teléfono verificado correctamente.');
       await refreshProfile();
     } catch (error) {
-      setSettingsMessage(resolveBackendMessage(error, 'No se pudo verificar el OTP.'));
+      setSettingsMessage(resolveBackendMessage(error, 'No se pudo verificar el código de verificación.'));
       setIsSettingsError(true);
     } finally {
       setIsConfirmingPhoneVerification(false);
@@ -523,9 +523,9 @@ export default function ProfesionalSettingsPage() {
     <ProfessionalDashboardShell profile={profile} active="Configuración">
       <div className="space-y-6">
               <DashboardPageHeader
-                eyebrow="Cuenta"
-                title="Configuración de cuenta"
-                description="Políticas, seguridad, apariencia y acciones sensibles en un solo panel."
+                eyebrow="CUENTA"
+                title="Configuración"
+                description="Ajustá seguridad, políticas y preferencias de la cuenta."
                 meta={
                   <DashboardHeaderBadge tone="accent">
                     Dashboard profesional
@@ -562,7 +562,7 @@ export default function ProfesionalSettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <DashboardStatCard
                       label="Email"
                       value={profile?.email || 'No disponible'}
@@ -577,7 +577,7 @@ export default function ProfesionalSettingsPage() {
                       tone="accent"
                     />
                     <DashboardStatCard
-                      label="Slug publico"
+                      label="Slug público"
                       value={profile?.slug || 'No disponible'}
                       detail="Identificador visible del perfil"
                       icon="publica"
@@ -585,7 +585,7 @@ export default function ProfesionalSettingsPage() {
                     <DashboardStatCard
                       label="Facturación"
                       value="Separada"
-                      detail="Plan y suscripcion viven en su propia seccion"
+                      detail="Plan y suscripción viven en su propia sección"
                       icon="plan"
                       tone="warm"
                     />
@@ -608,14 +608,14 @@ export default function ProfesionalSettingsPage() {
                     onStatusChanged={refreshProfile}
                     tone="professional"
                     variant="section"
-                    title="Email first-party"
+                    title="Verificación de email"
                     description="Confirmá el email principal para reforzar la identidad de la cuenta. El estado se actualiza en el dashboard sin requerir recarga manual."
                   />
 
                   <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       eyebrow="Verificación"
-                      title="Teléfono first-party"
+                      title="Verificación de teléfono"
                       description="Confirmá el teléfono principal para reforzar la identidad de la cuenta."
                     />
 
@@ -648,7 +648,7 @@ export default function ProfesionalSettingsPage() {
                             disabled={isSendingPhoneVerification}
                             className={secondaryButtonClassName}
                           >
-                            {isSendingPhoneVerification ? 'Enviando...' : 'Enviar OTP'}
+                            {isSendingPhoneVerification ? 'Enviando...' : 'Enviar código'}
                           </button>
                         </div>
 
@@ -659,7 +659,7 @@ export default function ProfesionalSettingsPage() {
                             pattern="[0-9]*"
                             value={phoneVerificationCode}
                             onChange={(event) => setPhoneVerificationCode(event.target.value)}
-                            placeholder="OTP de 6 dígitos"
+                            placeholder="Código de 6 dígitos"
                             className={`min-w-[220px] ${fieldClassName}`}
                           />
                           <button
@@ -670,7 +670,7 @@ export default function ProfesionalSettingsPage() {
                             disabled={isConfirmingPhoneVerification}
                             className={primaryButtonClassName}
                           >
-                            {isConfirmingPhoneVerification ? 'Verificando...' : 'Confirmar OTP'}
+                            {isConfirmingPhoneVerification ? 'Verificando...' : 'Confirmar código'}
                           </button>
                         </div>
                       </div>
@@ -686,7 +686,7 @@ export default function ProfesionalSettingsPage() {
                         />
                         <div className="mt-4 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
                           <p className="text-sm font-semibold text-[color:var(--ink)]">
-                            Gestion comercial separada del resto de la cuenta
+                            Gestión comercial separada del resto de la cuenta
                           </p>
                           <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                             Usa Facturación para revisar Plura Core, el estado de suscripción y la conexión de cobros.
@@ -1035,7 +1035,7 @@ export default function ProfesionalSettingsPage() {
                                   Enviar código
                                 </p>
                                 <p className="mt-1 text-xs text-[#9F1239]">
-                                  Te mandamos el OTP al email principal de la cuenta.
+                                  Te mandamos el código de verificación al email principal de la cuenta.
                                 </p>
                                 <Button
                                   type="button"
@@ -1068,7 +1068,7 @@ export default function ProfesionalSettingsPage() {
                                       setCloseProfileSuccessMessage(null);
                                     }
                                   }}
-                                  placeholder="Código OTP de 6 dígitos"
+                                  placeholder="Código de 6 dígitos"
                                   disabled={!closeProfileChallengeId || isCloseProfileChallengeVerified}
                                   className="mt-3 h-11 w-full rounded-[16px] border border-[#FECACA] bg-white px-4 text-sm text-[#7F1D1D] focus:border-[#EF4444] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                 />

@@ -170,7 +170,7 @@ function ProfesionalSidebar({
   return (
     <aside
       ref={rootRef}
-      className="relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]"
+      className="relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]"
     >
       <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-4' : 'px-4 py-4')}>
         <div className={cn('flex flex-col', collapsed ? 'items-center gap-4' : 'gap-5')}>
@@ -228,7 +228,7 @@ function ProfesionalSidebar({
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-3',
+                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-md p-0' : 'w-full gap-2 rounded-md px-2.5 py-3',
                   isActive && !isDisabled
                     ? cn(
                         'bg-[#ECFDF5] text-[#087A62]',
@@ -329,7 +329,7 @@ function ProfesionalSidebar({
               onClick={onToggleCollapsed}
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-md p-0' : 'w-full gap-2 rounded-md px-2.5 py-2.5',
               )}
               aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
               aria-pressed={collapsed}
@@ -352,7 +352,7 @@ function ProfesionalSidebar({
               type="button"
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-md p-0' : 'w-full gap-2 rounded-md px-2.5 py-2.5',
               )}
               onClick={handleEnterAsClient}
               disabled={isSwitchingContext}
@@ -373,7 +373,7 @@ function ProfesionalSidebar({
             disabled={isLoggingOut}
             className={cn(
               'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
+              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-md p-0' : 'w-full gap-2 rounded-md px-2.5 py-2.5',
             )}
             title={collapsed ? 'Cerrar sesión' : undefined}
           >

@@ -155,8 +155,8 @@ app:
     cookie-same-site: ${AUTH_COOKIE_SAMESITE:Strict}
     expose-access-token: ${AUTH_EXPOSE_ACCESS_TOKEN:false}
     # Compatibilidad transitoria para access tokens emitidos antes de sid/sv.
-    # Desactivar cuando haya pasado al menos el TTL máximo de access tokens legacy.
-    allow-legacy-jwt: ${AUTH_ALLOW_LEGACY_JWT:true}
+    # Mantener desactivado por defecto; habilitar solo durante ventanas de migracion controladas.
+    allow-legacy-jwt: ${AUTH_ALLOW_LEGACY_JWT:false}
     # En scale-out la ruta legacy agrega lookup extra sobre auth_refresh_token.
     # Mantenerla solo si sigue habiendo sesiones previas al modelo auth_session.
     allow-legacy-refresh-fallback: ${AUTH_ALLOW_LEGACY_REFRESH_FALLBACK:false}

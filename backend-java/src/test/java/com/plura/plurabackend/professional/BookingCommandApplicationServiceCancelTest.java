@@ -131,7 +131,8 @@ class BookingCommandApplicationServiceCancelTest {
         bookingNotificationIntegrationService,
         meterRegistry,
         passwordEncoder,
-        "America/Montevideo"
+        "America/Montevideo",
+        false
     );
 
     /**

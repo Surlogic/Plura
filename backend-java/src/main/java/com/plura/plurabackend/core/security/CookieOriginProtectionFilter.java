@@ -112,7 +112,7 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
             || path.startsWith("/auth/login")
             || path.equals("/auth/password/forgot")
             || path.equals("/auth/password/reset")
-            || path.startsWith("/auth/oauth");
+            || path.equals("/auth/oauth");
     }
 
     /**

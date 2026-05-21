@@ -55,6 +55,10 @@ import org.springframework.test.web.servlet.MvcResult;
     "SPRING_FLYWAY_ENABLED=false",
     "APP_RATE_LIMIT_ENABLED=false",
     "AUTH_EXPOSE_ACCESS_TOKEN=true",
+    "AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true",
+    "VONAGE_VERIFY_ENABLED=true",
+    "VONAGE_API_KEY=test-api-key",
+    "VONAGE_API_SECRET=test-api-secret",
     "AUTH_OAUTH_GOOGLE_ALLOW_DIRECT_TOKEN=true",
     "BILLING_TRIAL_IDENTITY_PEPPER=test-billing-trial-pepper",
     "HIKARI_CONNECTION_INIT_SQL=SELECT 1",
@@ -157,6 +161,41 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(stored.getEmailVerifiedAt());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(stored.getId()).isEmpty()
+        );
+    }
+
+    @Test
+    void completeOAuthPhoneForClientRequiresVerificationTokenWhenConfigured() throws Exception {
+        when(googleTokenVerifier.verify("client-phone-required")).thenReturn(
+            new OAuthUserInfo(
+                "google",
+                "g-client-phone-required",
+                "client-phone-required@plura.com",
+                "Client Phone Required",
+                "http://img"
+            )
+        );
+
+        MvcResult oauthResult = mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"client-phone-required\",\"desiredRole\":\"USER\",\"authAction\":\"REGISTER\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andReturn();
+
+        String accessToken = JsonPath.read(oauthResult.getResponse().getContentAsString(), "$.accessToken");
+
+        mockMvc.perform(post("/auth/oauth/complete-phone")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"phoneNumber":"+59899111999"}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("PHONE_VERIFICATION_REQUIRED"));
+
+        org.junit.jupiter.api.Assertions.assertNull(
+            userRepository.findByEmail("client-phone-required@plura.com").orElseThrow().getPhoneNumber()
         );
     }
 

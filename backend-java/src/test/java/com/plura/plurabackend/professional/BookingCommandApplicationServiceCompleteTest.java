@@ -108,7 +108,8 @@ class BookingCommandApplicationServiceCompleteTest {
         bookingNotificationIntegrationService,
         meterRegistry,
         passwordEncoder,
-        "America/Montevideo"
+        "America/Montevideo",
+        false
     );
 
     /**

@@ -133,7 +133,7 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
     }
 
     @Test
-    void clientRegistrationAllowsPhoneWithoutVerificationToken() throws Exception {
+    void clientRegistrationRequiresPhoneVerificationTokenWhenConfigured() throws Exception {
         mockMvc.perform(post("/auth/register/cliente")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -144,10 +144,11 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
                       "password":"Password123"
                     }
                     """))
-            .andExpect(status().isAccepted());
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("PHONE_VERIFICATION_REQUIRED"));
 
-        org.junit.jupiter.api.Assertions.assertNull(
-            userRepository.findByEmail("missing-token@plura.com").orElseThrow().getPhoneVerifiedAt()
+        org.junit.jupiter.api.Assertions.assertTrue(
+            userRepository.findByEmail("missing-token@plura.com").isEmpty()
         );
     }
 

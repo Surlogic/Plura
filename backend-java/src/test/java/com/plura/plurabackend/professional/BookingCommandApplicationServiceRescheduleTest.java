@@ -157,7 +157,8 @@ class BookingCommandApplicationServiceRescheduleTest {
         bookingNotificationIntegrationService,
         meterRegistry,
         passwordEncoder,
-        "America/Montevideo"
+        "America/Montevideo",
+        false
     );
 
     /**

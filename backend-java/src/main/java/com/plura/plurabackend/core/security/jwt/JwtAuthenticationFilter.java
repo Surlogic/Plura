@@ -53,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         AuthAuditService authAuditService,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.issuer:plura}") String jwtIssuer,
-        @Value("${app.auth.allow-legacy-jwt:true}") boolean allowLegacyJwt
+        @Value("${app.auth.allow-legacy-jwt:false}") boolean allowLegacyJwt
     ) {
         // jwtSecret es obligatorio; el runtime lo inyecta como JWT_SECRET.
         if (jwtSecret == null || jwtSecret.isBlank()) {

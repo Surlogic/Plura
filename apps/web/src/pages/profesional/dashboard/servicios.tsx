@@ -160,6 +160,8 @@ const formatDepositAmount = (value?: number | null) => {
 };
 
 const PRACTICAL_UNLIMITED = 9999;
+const EMAIL_VERIFICATION_CONFIG_PATH = '/profesional/dashboard/configuracion#verificacion-email';
+const EMAIL_VERIFICATION_REQUIRED_MESSAGE = 'Verificá tu email por código antes de crear servicios.';
 
 const extractServiceApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -183,6 +185,7 @@ export default function ProfesionalServicesBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
+  const [showEmailVerificationPrompt, setShowEmailVerificationPrompt] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
   const canUseOnlinePayments = featureAccess.onlinePayments;
@@ -252,6 +255,22 @@ export default function ProfesionalServicesBuilderPage() {
     setInitialDraft(empty);
     setEditingId(null);
     setInitialEditingId(null);
+  };
+
+  const showEmailVerificationRequiredPrompt = useCallback(() => {
+    setSaveMessage(EMAIL_VERIFICATION_REQUIRED_MESSAGE);
+    setSaveError(true);
+    setShowEmailVerificationPrompt(true);
+  }, []);
+
+  useEffect(() => {
+    if (profile?.emailVerified) {
+      setShowEmailVerificationPrompt(false);
+    }
+  }, [profile?.emailVerified]);
+
+  const handleGoToEmailVerification = () => {
+    window.location.assign(EMAIL_VERIFICATION_CONFIG_PATH);
   };
 
   const handleEditService = (service: ProfesionalServiceItem) => {
@@ -330,13 +349,12 @@ export default function ProfesionalServicesBuilderPage() {
 
   const handleSubmitService = async (): Promise<boolean> => {
     if (isSubmitting) return false;
-    if (!editingId && services.length >= maxServices) {
-      setSaveMessage(`Plura Core permite hasta ${maxServices} servicios.`);
-      setSaveError(true);
+    if (!editingId && !profile?.emailVerified) {
+      showEmailVerificationRequiredPrompt();
       return false;
     }
-    if (!editingId && services.length === 0 && !profile?.emailVerified) {
-      setSaveMessage('Verificá tu email antes de crear tu primer servicio.');
+    if (!editingId && services.length >= maxServices) {
+      setSaveMessage(`Plura Core permite hasta ${maxServices} servicios.`);
       setSaveError(true);
       return false;
     }
@@ -460,8 +478,12 @@ export default function ProfesionalServicesBuilderPage() {
       resetDraft();
       return true;
     } catch (error) {
-      setSaveMessage(extractServiceApiMessage(error, 'No se pudo guardar el servicio.'));
-      setSaveError(true);
+      if (!editingId && isAxiosError(error) && error.response?.status === 403 && !profile?.emailVerified) {
+        showEmailVerificationRequiredPrompt();
+      } else {
+        setSaveMessage(extractServiceApiMessage(error, 'No se pudo guardar el servicio.'));
+        setSaveError(true);
+      }
       return false;
     } finally {
       setIsSubmitting(false);
@@ -512,8 +534,7 @@ export default function ProfesionalServicesBuilderPage() {
   );
   const serviceCapacityLabel = maxServices >= PRACTICAL_UNLIMITED ? 'Ilimitados' : `${serviceCount}/${maxServices}`;
   const hasReachedServiceLimit = !editingId && services.length >= maxServices;
-  const requiresFirstServiceVerification =
-    !editingId && serviceCount === 0 && !profile?.emailVerified;
+  const requiresServiceCreationEmailVerification = !editingId && !profile?.emailVerified;
   const isDirty = useMemo(() => {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
@@ -591,7 +612,17 @@ export default function ProfesionalServicesBuilderPage() {
                   }
                   actions={(
                     <>
-                      <Button type="button" variant="primary" onClick={resetDraft}>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => {
+                          if (!profile?.emailVerified) {
+                            showEmailVerificationRequiredPrompt();
+                            return;
+                          }
+                          resetDraft();
+                        }}
+                      >
                         Crear servicio
                       </Button>
                       <Button
@@ -614,6 +645,34 @@ export default function ProfesionalServicesBuilderPage() {
                   }`}>
                     {saveMessage}
                   </p>
+                ) : null}
+
+                {showEmailVerificationPrompt && !profile?.emailVerified ? (
+                  <div
+                    role="alert"
+                    className="fixed bottom-4 right-4 z-50 w-[min(92vw,420px)] rounded-[18px] border border-amber-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.18)]"
+                  >
+                    <p className="text-sm font-semibold text-[#0E2A47]">Verificación requerida</p>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      Para crear servicios tenés que confirmar tu email con el código que enviamos a tu casilla.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGoToEmailVerification}
+                        className="rounded-full bg-[#0E2A47] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#12385f]"
+                      >
+                        Verificar email
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmailVerificationPrompt(false)}
+                        className="rounded-full border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:bg-white"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
 
                 {showSkeleton ? (
@@ -787,7 +846,7 @@ export default function ProfesionalServicesBuilderPage() {
                             Límite del plan: {serviceCount}/{maxServices} servicios. Cada servicio puede tener 1 foto pública.
                           </p>
                         ) : null}
-                        {requiresFirstServiceVerification ? (
+                        {requiresServiceCreationEmailVerification ? (
                           <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50/70 p-4">
                             <EmailVerificationPanel
                               email={profile?.email}
@@ -796,7 +855,7 @@ export default function ProfesionalServicesBuilderPage() {
                               tone="professional"
                               variant="banner"
                               title="Verificá tu email"
-                              description="Necesitás verificar tu email antes de crear tu primer servicio."
+                              description="Necesitás verificar tu email por código antes de crear servicios."
                             />
                           </div>
                         ) : null}
@@ -1079,7 +1138,7 @@ export default function ProfesionalServicesBuilderPage() {
                             type="button"
                             onClick={() => void handleSubmitService()}
                             className="rounded-full bg-[#1FB6A6] px-4 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
-                            disabled={isSubmitting || hasReachedServiceLimit || requiresFirstServiceVerification}
+                            disabled={isSubmitting || hasReachedServiceLimit}
                           >
                             {isSubmitting
                               ? 'Guardando...'

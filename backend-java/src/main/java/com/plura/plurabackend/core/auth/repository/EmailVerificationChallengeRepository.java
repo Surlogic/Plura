@@ -24,6 +24,21 @@ public interface EmailVerificationChallengeRepository extends JpaRepository<Emai
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<EmailVerificationChallenge> findFirstByUser_IdOrderByCreatedAtDesc(Long userId);
 
+    @Query(
+        """
+        SELECT COUNT(challenge) > 0
+        FROM EmailVerificationChallenge challenge
+        WHERE challenge.user.id = :userId
+            AND LOWER(challenge.email) = LOWER(:email)
+            AND challenge.consumedAt = :verifiedAt
+        """
+    )
+    boolean existsSuccessfulVerificationByUserIdAndEmail(
+        @Param("userId") Long userId,
+        @Param("email") String email,
+        @Param("verifiedAt") LocalDateTime verifiedAt
+    );
+
     @Modifying
     @Query(
         """

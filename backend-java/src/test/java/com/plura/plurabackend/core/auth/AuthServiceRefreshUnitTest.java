@@ -16,6 +16,8 @@ import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.model.RefreshToken;
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
@@ -33,7 +35,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 
 /**
  * Tests de servicios core compartidos / autenticacion, sesiones, OTP y recuperacion de cuenta.
@@ -71,6 +72,9 @@ class AuthServiceRefreshUnitTest {
     private com.plura.plurabackend.core.auth.context.AuthContextResolver authContextResolver;
 
     @Mock
+    private EmailVerificationChallengeRepository emailVerificationChallengeRepository;
+
+    @Mock
     private RegistrationPhoneVerificationService registrationPhoneVerificationService;
     @Mock
     private ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
@@ -94,6 +98,7 @@ class AuthServiceRefreshUnitTest {
             professionalAccountProfileGateway,
             effectiveProfessionalPlanService,
             authContextResolver,
+            emailVerificationChallengeRepository,
             passwordEncoder,
             registrationPhoneVerificationService,
             professionalRegistrationCheckoutService,

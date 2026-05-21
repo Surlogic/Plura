@@ -1,11 +1,12 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.core.storage.ImageCleanupService;
-import com.plura.plurabackend.core.storage.ImageStorageService;
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
 import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
+import com.plura.plurabackend.core.storage.ImageCleanupService;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.BooleanCapability;
@@ -38,6 +39,7 @@ public class ProfileServiceCatalogSupport {
     private final PlanGuardService planGuardService;
     private final ImageCleanupService imageCleanupService;
     private final ImageStorageService imageStorageService;
+    private final EmailVerificationChallengeRepository emailVerificationChallengeRepository;
 
     public ProfileServiceCatalogSupport(
         ProfesionalServiceRepository profesionalServiceRepository,
@@ -46,7 +48,8 @@ public class ProfileServiceCatalogSupport {
         CategoryRepository categoryRepository,
         PlanGuardService planGuardService,
         ImageCleanupService imageCleanupService,
-        ImageStorageService imageStorageService
+        ImageStorageService imageStorageService,
+        EmailVerificationChallengeRepository emailVerificationChallengeRepository
     ) {
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.profilePublicPageAssembler = profilePublicPageAssembler;
@@ -55,6 +58,7 @@ public class ProfileServiceCatalogSupport {
         this.planGuardService = planGuardService;
         this.imageCleanupService = imageCleanupService;
         this.imageStorageService = imageStorageService;
+        this.emailVerificationChallengeRepository = emailVerificationChallengeRepository;
     }
 
     /**
@@ -76,10 +80,8 @@ public class ProfileServiceCatalogSupport {
         ProfessionalProfile profile,
         ProfesionalServiceRequest request
     ) {
+        ensureServiceCreationEmailIsVerified(profile);
         long currentServiceCount = profesionalServiceRepository.countByProfessional_Id(profile.getId());
-        if (currentServiceCount == 0) {
-            ensureFirstServiceCreationEmailIsVerified(profile);
-        }
         long nextServiceCount = currentServiceCount + 1;
         planGuardService.requireLimitNotExceeded(rawUserId, LimitCapability.MAX_SERVICES, nextServiceCount);
 
@@ -203,11 +205,26 @@ public class ProfileServiceCatalogSupport {
         }
     }
 
-    private void ensureFirstServiceCreationEmailIsVerified(ProfessionalProfile profile) {
+    private void ensureServiceCreationEmailIsVerified(ProfessionalProfile profile) {
         User user = profile.getUser();
-        if (user == null || user.getEmailVerifiedAt() == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu email antes de crear tu primer servicio.");
+        if (!isEmailVerifiedByCode(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu email por código antes de crear servicios.");
         }
+    }
+
+    private boolean isEmailVerifiedByCode(User user) {
+        if (user == null || user.getId() == null || user.getEmailVerifiedAt() == null) {
+            return false;
+        }
+        String email = user.getEmail();
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+        return emailVerificationChallengeRepository.existsSuccessfulVerificationByUserIdAndEmail(
+            user.getId(),
+            email.trim(),
+            user.getEmailVerifiedAt()
+        );
     }
 
     /**

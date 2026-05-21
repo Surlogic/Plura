@@ -191,7 +191,7 @@ Lectura de producto:
 - `/profesional/auth/bienvenido`
 - `/profesional/auth/complete-phone`
 - `/profesional/dashboard`
-- `/profesional/dashboard/servicios` — si el profesional no tiene servicios y le falta verificar email, muestra el bloque de verificacion por email antes del formulario; backend mantiene la autoridad y bloquea `POST /profesional/services` del primer servicio con `403` si falta el email verificado. La verificacion de telefono no bloquea el alta de servicios.
+- `/profesional/dashboard/servicios` — si al profesional le falta verificar email, no permite crear servicios, muestra el bloque de verificacion por email en el formulario y un CTA emergente hacia `/profesional/dashboard/configuracion#verificacion-email`; backend mantiene la autoridad y bloquea `POST /profesional/services` con `403` si falta el email verificado por codigo. La verificacion de telefono no bloquea el alta de servicios.
 - `/profesional/dashboard/horarios`
 - `/profesional/dashboard/reservas`
 - `/profesional/dashboard/acceso`

@@ -76,7 +76,7 @@ public class EmailVerificationService {
             );
         }
 
-        if (user.getEmailVerifiedAt() != null) {
+        if (isEmailVerifiedByCode(user)) {
             return new EmailVerificationSendResponse("El email ya está verificado.", 0L);
         }
 
@@ -140,7 +140,7 @@ public class EmailVerificationService {
     @Transactional(noRollbackFor = AuthApiException.class)
     public void confirmVerificationCode(String rawUserId, String rawCode) {
         User user = loadActiveUser(rawUserId);
-        if (user.getEmailVerifiedAt() != null) {
+        if (isEmailVerifiedByCode(user)) {
             throw auditFailure(user, HttpStatus.CONFLICT, "ALREADY_VERIFIED", "El email ya está verificado.");
         }
 
@@ -276,6 +276,21 @@ public class EmailVerificationService {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "EMAIL_INVALID", "Email inválido.");
         }
         return normalized;
+    }
+
+    private boolean isEmailVerifiedByCode(User user) {
+        if (user == null || user.getId() == null || user.getEmailVerifiedAt() == null) {
+            return false;
+        }
+        String normalizedEmail = normalizeOptionalEmail(user.getEmail());
+        if (normalizedEmail == null) {
+            return false;
+        }
+        return emailVerificationChallengeRepository.existsSuccessfulVerificationByUserIdAndEmail(
+            user.getId(),
+            normalizedEmail,
+            user.getEmailVerifiedAt()
+        );
     }
 
     /**

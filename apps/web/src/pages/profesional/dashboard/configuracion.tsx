@@ -603,6 +603,7 @@ export default function ProfesionalSettingsPage() {
                   </div>
 
                   <EmailVerificationPanel
+                    id="verificacion-email"
                     email={profile?.email}
                     emailVerified={profile?.emailVerified}
                     onStatusChanged={refreshProfile}

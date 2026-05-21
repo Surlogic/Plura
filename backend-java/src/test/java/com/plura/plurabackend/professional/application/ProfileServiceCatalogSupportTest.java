@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
 import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
@@ -29,16 +31,15 @@ import org.springframework.web.server.ResponseStatusException;
 class ProfileServiceCatalogSupportTest {
 
     /**
-     * Escenario: bloquea el primer servicio cuando falta verificar email.
-     * El objetivo es dejar explicita la regla vigente de alta inicial del catalogo.
+     * Escenario: bloquea cualquier alta de servicio cuando falta verificar email.
+     * El objetivo es dejar explicita la regla vigente de alta del catalogo.
      */
     @Test
-    void blocksFirstServiceCreationWhenEmailIsNotVerified() {
+    void blocksServiceCreationWhenEmailIsNotVerified() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
         profile.setUser(new User());
         ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
-        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(0L);
 
         ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
             repository,
@@ -47,7 +48,8 @@ class ProfileServiceCatalogSupportTest {
             mock(CategoryRepository.class),
             mock(PlanGuardService.class),
             mock(ImageCleanupService.class),
-            mock(ImageStorageService.class)
+            mock(ImageStorageService.class),
+            mock(EmailVerificationChallengeRepository.class)
         );
 
         ResponseStatusException exception = assertThrows(
@@ -56,22 +58,20 @@ class ProfileServiceCatalogSupportTest {
         );
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-        assertEquals("Verificá tu email antes de crear tu primer servicio.", exception.getReason());
+        assertEquals("Verificá tu email por código antes de crear servicios.", exception.getReason());
     }
 
     /**
-     * Escenario: permite el primer servicio con email verificado aunque el telefono siga pendiente.
+     * Escenario: permite crear servicios con email verificado aunque el telefono siga pendiente.
      * El objetivo es evitar que vuelva el bloqueo por SMS en alta de servicios.
      */
     @Test
     void allowsFirstServiceCreationWhenEmailIsVerifiedAndPhoneIsPending() {
-        User user = new User();
-        user.setEmailVerifiedAt(LocalDateTime.now());
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
-        profile.setUser(user);
+        profile.setUser(verifiedUser());
         ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
-        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(0L);
+        when(repository.countByProfessional_Id(11L)).thenReturn(0L);
 
         ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
             repository,
@@ -80,7 +80,8 @@ class ProfileServiceCatalogSupportTest {
             mock(CategoryRepository.class),
             mock(PlanGuardService.class),
             mock(ImageCleanupService.class),
-            mock(ImageStorageService.class)
+            mock(ImageStorageService.class),
+            successfulEmailVerificationRepository(profile.getUser())
         );
 
         assertDoesNotThrow(() -> support.createService("11", profile, validServiceRequest()));
@@ -95,9 +96,10 @@ class ProfileServiceCatalogSupportTest {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
+        profile.setUser(verifiedUser());
         ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
 
-        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(15L);
+        when(repository.countByProfessional_Id(11L)).thenReturn(15L);
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Plura Core permite hasta 30 servicios"))
             .when(planGuardService)
             .requireLimitNotExceeded("11", LimitCapability.MAX_SERVICES, 16L);
@@ -109,7 +111,8 @@ class ProfileServiceCatalogSupportTest {
             mock(CategoryRepository.class),
             planGuardService,
             mock(ImageCleanupService.class),
-            mock(ImageStorageService.class)
+            mock(ImageStorageService.class),
+            successfulEmailVerificationRepository(profile.getUser())
         );
 
         ProfesionalServiceRequest request = new ProfesionalServiceRequest();
@@ -135,9 +138,10 @@ class ProfileServiceCatalogSupportTest {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
+        profile.setUser(verifiedUser());
         ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
 
-        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(1L);
+        when(repository.countByProfessional_Id(11L)).thenReturn(1L);
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Este extra no está habilitado"))
             .when(planGuardService)
             .requireBooleanCapability("11", BooleanCapability.ONLINE_PAYMENTS);
@@ -149,7 +153,8 @@ class ProfileServiceCatalogSupportTest {
             mock(CategoryRepository.class),
             planGuardService,
             mock(ImageCleanupService.class),
-            mock(ImageStorageService.class)
+            mock(ImageStorageService.class),
+            successfulEmailVerificationRepository(profile.getUser())
         );
 
         ProfesionalServiceRequest request = new ProfesionalServiceRequest();
@@ -168,11 +173,60 @@ class ProfileServiceCatalogSupportTest {
         assertEquals("Este extra no está habilitado", exception.getReason());
     }
 
+    /**
+     * Escenario: bloquea el alta cuando el usuario solo tiene timestamp legado/OAuth sin codigo confirmado.
+     * El objetivo es evitar que el timestamp vuelva a equivaler a verificacion real de email.
+     */
+    @Test
+    void blocksServiceCreationWhenEmailWasOnlyTrustedVerifiedWithoutCode() {
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setId(11L);
+        profile.setUser(verifiedUser());
+        ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
+
+        ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
+            repository,
+            mock(ProfilePublicPageAssembler.class),
+            mock(ProfessionalSideEffectCoordinator.class),
+            mock(CategoryRepository.class),
+            mock(PlanGuardService.class),
+            mock(ImageCleanupService.class),
+            mock(ImageStorageService.class),
+            mock(EmailVerificationChallengeRepository.class)
+        );
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> support.createService("11", profile, validServiceRequest())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Verificá tu email por código antes de crear servicios.", exception.getReason());
+    }
+
     private ProfesionalServiceRequest validServiceRequest() {
         ProfesionalServiceRequest request = new ProfesionalServiceRequest();
         request.setName("Corte");
         request.setPrice(java.math.BigDecimal.TEN);
         request.setDuration("30 min");
         return request;
+    }
+
+    private User verifiedUser() {
+        User user = new User();
+        user.setId(22L);
+        user.setEmail("pro@plura.com");
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        return user;
+    }
+
+    private EmailVerificationChallengeRepository successfulEmailVerificationRepository(User user) {
+        EmailVerificationChallengeRepository repository = mock(EmailVerificationChallengeRepository.class);
+        when(repository.existsSuccessfulVerificationByUserIdAndEmail(
+            user.getId(),
+            user.getEmail(),
+            user.getEmailVerifiedAt()
+        )).thenReturn(true);
+        return repository;
     }
 }

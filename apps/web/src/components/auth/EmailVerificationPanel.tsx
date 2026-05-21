@@ -5,6 +5,7 @@ import { isAxiosError } from 'axios';
 import api from '@/services/api';
 
 type EmailVerificationPanelProps = {
+  id?: string;
   email?: string | null;
   emailVerified?: boolean;
   onStatusChanged?: () => Promise<void> | void;
@@ -22,6 +23,7 @@ const resolveBackendMessage = (error: unknown, fallback: string) => {
 };
 
 export default function EmailVerificationPanel({
+  id,
   email,
   emailVerified = false,
   onStatusChanged,
@@ -109,7 +111,7 @@ export default function EmailVerificationPanel({
   };
 
   return (
-    <section className={surfaceClassName}>
+    <section id={id} className={surfaceClassName}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <p className={`text-xs uppercase tracking-[0.24em] ${isProfessionalTone ? 'text-[#64748B]' : 'text-[color:var(--ink-faint)]'}`}>

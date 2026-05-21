@@ -41,6 +41,7 @@ import com.plura.plurabackend.core.category.dto.CategoryResponse;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.auth.model.RefreshToken;
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.common.util.SlugUtils;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
@@ -94,6 +95,7 @@ public class AuthService {
     private final ProfessionalAccountProfileGateway professionalAccountProfileGateway;
     private final EffectiveProfessionalPlanService effectiveProfessionalPlanService;
     private final AuthContextResolver authContextResolver;
+    private final EmailVerificationChallengeRepository emailVerificationChallengeRepository;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationPhoneVerificationService registrationPhoneVerificationService;
     private final ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
@@ -151,6 +153,7 @@ public class AuthService {
         ProfessionalAccountProfileGateway professionalAccountProfileGateway,
         EffectiveProfessionalPlanService effectiveProfessionalPlanService,
         AuthContextResolver authContextResolver,
+        EmailVerificationChallengeRepository emailVerificationChallengeRepository,
         PasswordEncoder passwordEncoder,
         RegistrationPhoneVerificationService registrationPhoneVerificationService,
         ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService,
@@ -176,6 +179,7 @@ public class AuthService {
         this.professionalAccountProfileGateway = professionalAccountProfileGateway;
         this.effectiveProfessionalPlanService = effectiveProfessionalPlanService;
         this.authContextResolver = authContextResolver;
+        this.emailVerificationChallengeRepository = emailVerificationChallengeRepository;
         this.passwordEncoder = passwordEncoder;
         this.registrationPhoneVerificationService = registrationPhoneVerificationService;
         this.professionalRegistrationCheckoutService = professionalRegistrationCheckoutService;
@@ -403,9 +407,6 @@ public class AuthService {
             applyProfessionalRegistrationPhoneToUser(existingUser, phoneVerification);
             existingUser.setFullName(request.getFullName().trim());
             existingUser.setRole(UserRole.PROFESSIONAL);
-            if (oauthIdentity != null && existingUser.getEmailVerifiedAt() == null) {
-                existingUser.setEmailVerifiedAt(LocalDateTime.now());
-            }
             User savedExistingUser = userRepository.save(existingUser);
             ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
                 savedExistingUser,
@@ -448,7 +449,6 @@ public class AuthService {
             user.setProvider(oauthIdentity.provider());
             user.setProviderId(oauthIdentity.providerId());
             user.setAvatar(oauthIdentity.avatar());
-            user.setEmailVerifiedAt(LocalDateTime.now());
         }
         User savedUser;
         try {
@@ -693,7 +693,6 @@ public class AuthService {
             user.setProvider(normalizedProvider);
             user.setProviderId(providerId);
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
-            applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
         } else {
             boolean professionalOnboardingRegister =
@@ -746,9 +745,6 @@ public class AuthService {
             String avatar = normalizeOAuthValue(userInfo.avatar());
             if (avatar != null && !avatar.equals(user.getAvatar())) {
                 user.setAvatar(avatar);
-                changed = true;
-            }
-            if (applyTrustedEmailVerification(user, normalizedProvider)) {
                 changed = true;
             }
             if (changed) {
@@ -1397,7 +1393,7 @@ public class AuthService {
             profile.getSlug(),
             user.getFullName(),
             user.getEmail(),
-            user.getEmailVerifiedAt() != null,
+            isEmailVerifiedByCode(user),
             user.getPhoneNumber(),
             user.getPhoneVerifiedAt() != null,
             profile.getRubro(),
@@ -1539,10 +1535,25 @@ public class AuthService {
             String.valueOf(user.getId()),
             user.getEmail(),
             user.getFullName(),
-            user.getEmailVerifiedAt() != null,
+            isEmailVerifiedByCode(user),
             user.getPhoneNumber(),
             user.getPhoneVerifiedAt() != null,
             user.getCreatedAt()
+        );
+    }
+
+    private boolean isEmailVerifiedByCode(User user) {
+        if (user == null || user.getId() == null || user.getEmailVerifiedAt() == null) {
+            return false;
+        }
+        String normalizedEmail = normalizeOAuthEmail(user.getEmail());
+        if (normalizedEmail == null) {
+            return false;
+        }
+        return emailVerificationChallengeRepository.existsSuccessfulVerificationByUserIdAndEmail(
+            user.getId(),
+            normalizedEmail,
+            user.getEmailVerifiedAt()
         );
     }
 
@@ -1691,20 +1702,6 @@ public class AuthService {
     private String normalizeEmailForAvailability(String rawEmail) {
         String normalized = normalizeOAuthValue(rawEmail);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
-    }
-
-    /**
-     * Aplica trusted email verification sobre el modelo actual manteniendo consistencia.
-     */
-    private boolean applyTrustedEmailVerification(User user, String normalizedProvider) {
-        if (user == null || normalizedProvider == null) {
-            return false;
-        }
-        if (!"google".equals(normalizedProvider) || user.getEmailVerifiedAt() != null) {
-            return false;
-        }
-        user.setEmailVerifiedAt(LocalDateTime.now());
-        return true;
     }
 
     /**

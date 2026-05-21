@@ -24,6 +24,7 @@ import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
 import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -56,6 +57,7 @@ class AuthServiceContextUnitTest {
     @Mock private ProfessionalAccountProfileGateway professionalAccountProfileGateway;
     @Mock private EffectiveProfessionalPlanService effectiveProfessionalPlanService;
     @Mock private AuthContextResolver authContextResolver;
+    @Mock private EmailVerificationChallengeRepository emailVerificationChallengeRepository;
     @Mock private RegistrationPhoneVerificationService registrationPhoneVerificationService;
     @Mock private ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
 
@@ -75,6 +77,7 @@ class AuthServiceContextUnitTest {
             professionalAccountProfileGateway,
             effectiveProfessionalPlanService,
             authContextResolver,
+            emailVerificationChallengeRepository,
             passwordEncoder,
             registrationPhoneVerificationService,
             professionalRegistrationCheckoutService,

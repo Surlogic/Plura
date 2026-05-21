@@ -3,6 +3,7 @@ package com.plura.plurabackend.core.auth;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -193,17 +194,81 @@ class AuthEmailVerificationIntegrationTest {
     }
 
     /**
-     * Escenario: already verified usuario does no get nuevo challenge.
-     * El objetivo es dejar explicita la regla que protege este test.
+     * Escenario: usuario con timestamp legado puede pedir y confirmar codigo.
+     * El objetivo es evitar que un timestamp sin challenge consumido cuente como email verificado.
      */
     @Test
-    void alreadyVerifiedUserDoesNotGetNewChallenge() throws Exception {
-        registerClient("already-verified@plura.com", "Password123");
-        User user = userRepository.findByEmail("already-verified@plura.com").orElseThrow();
+    void legacyTimestampVerifiedUserCanRequestAndConfirmCode() throws Exception {
+        registerClient("legacy-verified@plura.com", "Password123");
+        User user = userRepository.findByEmail("legacy-verified@plura.com").orElseThrow();
         user.setEmailVerifiedAt(LocalDateTime.now());
         userRepository.save(user);
-        JsonNode loginPayload = loginClient("already-verified@plura.com", "Password123");
+        JsonNode loginPayload = loginClient("legacy-verified@plura.com", "Password123");
         String accessToken = loginPayload.path("accessToken").asText();
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.emailVerified").value(false));
+
+        mockMvc.perform(post("/auth/verify/email/send")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.message").value("Te enviamos un código de verificación por email."));
+
+        ArgumentCaptor<EmailVerificationNotificationSender.EmailVerificationNotification> captor =
+            ArgumentCaptor.forClass(EmailVerificationNotificationSender.EmailVerificationNotification.class);
+        verify(emailVerificationNotificationSender, times(1)).sendVerificationCode(captor.capture());
+
+        mockMvc.perform(post("/auth/verify/email/confirm")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "%s"
+                    }
+                    """.formatted(captor.getValue().code())))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.emailVerified").value(true));
+    }
+
+    /**
+     * Escenario: usuario verificado por codigo no recibe un nuevo challenge.
+     * El objetivo es dejar explicita la regla vigente de idempotencia.
+     */
+    @Test
+    void alreadyCodeVerifiedUserDoesNotGetNewChallenge() throws Exception {
+        registerClient("already-code-verified@plura.com", "Password123");
+        JsonNode loginPayload = loginClient("already-code-verified@plura.com", "Password123");
+        String accessToken = loginPayload.path("accessToken").asText();
+
+        mockMvc.perform(post("/auth/verify/email/send")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isAccepted());
+
+        ArgumentCaptor<EmailVerificationNotificationSender.EmailVerificationNotification> captor =
+            ArgumentCaptor.forClass(EmailVerificationNotificationSender.EmailVerificationNotification.class);
+        verify(emailVerificationNotificationSender, times(1)).sendVerificationCode(captor.capture());
+
+        mockMvc.perform(post("/auth/verify/email/confirm")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "%s"
+                    }
+                    """.formatted(captor.getValue().code())))
+            .andExpect(status().isNoContent());
+
+        reset(emailVerificationNotificationSender);
 
         mockMvc.perform(post("/auth/verify/email/send")
                 .header("Authorization", "Bearer " + accessToken)
@@ -213,7 +278,7 @@ class AuthEmailVerificationIntegrationTest {
             .andExpect(jsonPath("$.message").value("El email ya está verificado."));
 
         verify(emailVerificationNotificationSender, never()).sendVerificationCode(any());
-        org.junit.jupiter.api.Assertions.assertEquals(0L, emailVerificationChallengeRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(1L, emailVerificationChallengeRepository.count());
     }
 
     /**

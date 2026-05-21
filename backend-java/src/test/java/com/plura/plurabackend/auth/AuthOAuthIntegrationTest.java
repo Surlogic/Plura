@@ -142,7 +142,7 @@ class AuthOAuthIntegrationTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void oauthGoogleRegisterWithDesiredRoleUserCreatesUser() throws Exception {
+    void oauthGoogleRegisterWithDesiredRoleUserCreatesUserWithoutVerifyingEmail() throws Exception {
         when(googleTokenVerifier.verify("client-google")).thenReturn(
             new OAuthUserInfo("google", "g-client", "client@plura.com", "Client User", "http://img")
         );
@@ -158,7 +158,7 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, stored.getRole());
         org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g-client", stored.getProviderId());
-        org.junit.jupiter.api.Assertions.assertNotNull(stored.getEmailVerifiedAt());
+        org.junit.jupiter.api.Assertions.assertNull(stored.getEmailVerifiedAt());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(stored.getId()).isEmpty()
         );
@@ -314,6 +314,7 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, promoted.getRole());
         org.junit.jupiter.api.Assertions.assertEquals("google", promoted.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g-upgrade", promoted.getProviderId());
+        org.junit.jupiter.api.Assertions.assertNull(promoted.getEmailVerifiedAt());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(promoted.getId()).isPresent()
         );
@@ -386,6 +387,7 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
         org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g-final", stored.getProviderId());
+        org.junit.jupiter.api.Assertions.assertNull(stored.getEmailVerifiedAt());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
         );

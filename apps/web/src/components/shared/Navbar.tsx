@@ -48,13 +48,13 @@ export default memo(function Navbar({
   const headerClassName = isDashboard
     ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl'
     : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/84 backdrop-blur-xl';
-  const navButtonClassName = 'h-10 px-3.5';
+  const navButtonClassName = 'h-9 px-3 sm:h-10 sm:px-3.5';
   const compactThemeSwitcherClassName =
     'self-start sm:self-auto [&>div]:p-0.5 [&_button]:h-7 [&_button]:w-7';
 
   return (
     <header className={headerClassName}>
-      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2 sm:gap-x-4 sm:px-6 sm:py-3 lg:px-10">
         <div className="flex items-center gap-2.5">
           {showMenuButton ? (
             <Button type="button" onClick={onMenuClick} size="sm" className="lg:hidden">
@@ -69,7 +69,7 @@ export default memo(function Navbar({
           </div>
         ) : null}
         <div
-          className={`flex flex-col gap-2 text-sm sm:flex-row sm:items-center ${
+          className={`ml-auto flex flex-wrap items-center justify-end gap-1.5 text-sm sm:gap-2 ${
             exploreViewToggle ? 'order-2 lg:order-3' : ''
           }`}
         >
@@ -134,7 +134,7 @@ export default memo(function Navbar({
             </>
           ) : (
             <>
-              <Button href="/explorar" size="md" className={navButtonClassName}>
+              <Button href="/explorar" size="md" className={`${navButtonClassName} hidden sm:inline-flex`}>
                 Explorar
               </Button>
               <Button href="/login" size="md" className={navButtonClassName}>

@@ -858,14 +858,12 @@ export default function ProfesionalDetailPage({
       </main>
 
       {!isPreview && !selectedService ? (
-        <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 z-40 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 lg:bottom-6 lg:right-6"
-        >
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] left-4 right-4 z-40 sm:left-auto sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 sm:w-auto lg:bottom-6 lg:right-6">
           <Button
             type="button"
             variant="primary"
             size="lg"
-            className="rounded-full px-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)]"
+            className="w-full rounded-full px-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)] sm:w-auto"
             onClick={handlePrimaryReserveEntry}
           >
             Reservar

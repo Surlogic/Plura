@@ -66,33 +66,33 @@ export default function ServiceDetailModal({
   const serviceCategory = service.categoryName?.trim() || fallbackCategoryName?.trim() || '';
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-6">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center px-3 py-4 sm:px-4 sm:py-6">
       <button
         type="button"
         className="absolute inset-0 bg-[rgba(18,49,38,0.36)] backdrop-blur-[3px]"
         onClick={onClose}
         aria-label="Cerrar detalle del servicio"
       />
-      <div className="relative w-full max-w-[600px] rounded-[24px] border border-[color:var(--border-soft)] bg-white p-5 shadow-[var(--shadow-lift)] sm:p-6">
+      <div className="relative max-h-[calc(100vh-2rem)] w-full max-w-[600px] overflow-y-auto rounded-[22px] border border-[color:var(--border-soft)] bg-white p-4 shadow-[var(--shadow-lift)] sm:rounded-[24px] sm:p-6">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[0.62rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">
               Servicio
             </p>
-            <h3 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">
+            <h3 className="mt-1 break-words text-2xl font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
               {service.name || 'Servicio'}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-[color:var(--border-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)]"
+            className="shrink-0 rounded-full border border-[color:var(--border-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)]"
           >
             Cerrar
           </button>
         </div>
 
-        <div className="relative mt-4 h-52 w-full overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
+        <div className="relative mt-4 h-44 w-full overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:h-52">
           {imageSrc && !imageFailed ? (
             <Image
               src={imageSrc}
@@ -114,7 +114,7 @@ export default function ServiceDetailModal({
             <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
               Duracion
             </p>
-            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+            <p className="mt-1 break-words text-sm font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
               {formatServiceDuration(service.duration)}
             </p>
           </div>
@@ -122,7 +122,7 @@ export default function ServiceDetailModal({
             <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
               Precio
             </p>
-            <p className="mt-1 text-sm font-semibold text-[color:var(--primary)]">
+            <p className="mt-1 break-words text-sm font-semibold text-[color:var(--primary)] [overflow-wrap:anywhere]">
               {formatServicePrice(service.price)}
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function ServiceDetailModal({
             <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
               Categoría
             </p>
-            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+            <p className="mt-1 break-words text-sm font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
               {serviceCategory}
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function ServiceDetailModal({
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
             Modalidad de pago
           </p>
-          <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+          <p className="mt-1 break-words text-sm font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
             {formatServicePaymentType(service.paymentType)}
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function ServiceDetailModal({
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
             Descripcion
           </p>
-          <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
+          <p className="mt-1 break-words text-sm text-[color:var(--ink-muted)] [overflow-wrap:anywhere]">
             {service.description?.trim() || 'Sin descripcion cargada.'}
           </p>
         </div>

@@ -689,7 +689,7 @@ export default function ProfesionalReservationsPage() {
     emptyText: string;
     tone: ReservationColumnTone;
   }) => (
-    <section className={`flex min-h-[520px] min-w-0 flex-col rounded-[18px] border shadow-[0_4px_14px_rgba(15,23,42,0.04)] ${reservationColumnToneClasses[tone]}`}>
+    <section className={`flex min-h-0 min-w-0 flex-col rounded-[18px] border shadow-[0_4px_14px_rgba(15,23,42,0.04)] md:min-h-[520px] ${reservationColumnToneClasses[tone]}`}>
       <div className="flex items-start justify-between gap-3 border-b border-white/70 px-4 py-4">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-[#0E2A47]">{title}</h2>
@@ -701,7 +701,7 @@ export default function ProfesionalReservationsPage() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {columnReservations.length === 0 ? (
-          <div className="flex min-h-[260px] items-center justify-center rounded-[16px] border border-dashed border-[#CBD5E1] bg-white/75 px-4 py-6 text-center text-sm text-[#64748B]">
+          <div className="flex min-h-[160px] items-center justify-center rounded-[16px] border border-dashed border-[#CBD5E1] bg-white/75 px-4 py-6 text-center text-sm text-[#64748B] md:min-h-[260px]">
             {emptyText}
           </div>
         ) : (

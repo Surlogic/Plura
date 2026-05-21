@@ -197,15 +197,18 @@ export default function PublicProfileHero({
 
               <div className="min-w-0 flex-1">
                 {category ? (
-                  <Badge variant="neutral" className="normal-case tracking-normal">
+                  <Badge
+                    variant="neutral"
+                    className="max-w-full break-words whitespace-normal normal-case tracking-normal [overflow-wrap:anywhere]"
+                  >
                     {category}
                   </Badge>
                 ) : null}
-                <h1 className="mt-3 text-3xl font-semibold tracking-normal text-[color:var(--ink)] sm:text-4xl lg:text-[3rem]">
+                <h1 className="mt-3 break-words text-3xl font-semibold tracking-normal text-[color:var(--ink)] [overflow-wrap:anywhere] sm:text-4xl lg:text-[3rem]">
                   {name}
                 </h1>
                 {headline ? (
-                  <p className="mx-auto mt-3 max-w-4xl text-base leading-7 text-[color:var(--ink-muted)] sm:mx-0 sm:text-lg">
+                  <p className="mx-auto mt-3 max-w-4xl break-words text-base leading-7 text-[color:var(--ink-muted)] [overflow-wrap:anywhere] sm:mx-0 sm:text-lg">
                     {headline}
                   </p>
                 ) : null}
@@ -273,7 +276,7 @@ export default function PublicProfileHero({
                     <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
                       Direccion
                     </p>
-                    <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink)] sm:text-base">
+                    <p className="mt-1.5 break-words text-sm leading-6 text-[color:var(--ink)] [overflow-wrap:anywhere] sm:text-base">
                       {address}
                     </p>
                   </div>
@@ -289,12 +292,12 @@ export default function PublicProfileHero({
                       {scheduleSummary.map((item) => (
                         <div
                           key={`${item.label}-${item.ranges}`}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-white px-3 py-2"
+                          className="flex flex-wrap items-start justify-between gap-2 rounded-[14px] bg-white px-3 py-2"
                         >
-                          <span className="text-sm font-semibold text-[color:var(--ink)]">
+                          <span className="break-words text-sm font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
                             {item.label}
                           </span>
-                          <span className="text-sm text-[color:var(--primary)]">
+                          <span className="break-words text-left text-sm text-[color:var(--primary)] [overflow-wrap:anywhere] sm:text-right">
                             {item.ranges}
                           </span>
                         </div>

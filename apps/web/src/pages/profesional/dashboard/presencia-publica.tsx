@@ -742,7 +742,7 @@ export default function ProfesionalPublicPresencePage() {
                   src="/profesional/pagina/preview?preview=1"
                   sandbox="allow-scripts allow-same-origin"
                   referrerPolicy="no-referrer"
-                  className="h-[780px] w-full"
+                  className="h-[460px] w-full sm:h-[620px] xl:h-[780px]"
                 />
               </div>
             </section>

@@ -40,6 +40,19 @@ export default function ProfessionalDashboardShell({
     setIsSidebarCollapsed(storedValue === 'true' || (storedValue === null && legacyHiddenValue === 'true'));
   }, []);
 
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [active]);
+
+  useEffect(() => {
+    if (!isMenuOpen || typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
+
   const updateSidebarCollapsed = (nextValue: boolean) => {
     setIsSidebarCollapsed(nextValue);
     if (typeof window !== 'undefined') {
@@ -80,14 +93,48 @@ export default function ProfessionalDashboardShell({
           )}
         >
           <div className="border-b border-[#E2E8F0] bg-white px-4 py-3 sm:px-6 lg:hidden">
-            <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              aria-expanded={isMenuOpen}
+              aria-controls="professional-mobile-sidebar"
+            >
               {isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
             </Button>
           </div>
 
           {isMenuOpen ? (
-            <div className="border-b border-[#E2E8F0] bg-white lg:hidden">
-              <ProfesionalSidebar profile={profile} active={active} />
+            <div
+              className="fixed inset-0 z-[80] lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú profesional"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Cerrar menú profesional"
+              />
+              <div
+                id="professional-mobile-sidebar"
+                className="absolute inset-y-0 left-0 flex w-[86vw] max-w-[320px] flex-col bg-white shadow-[0_24px_64px_rgba(15,23,42,0.22)]"
+              >
+                <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                  <span className="text-sm font-semibold text-[#0F172A]">Menú</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="rounded-full border border-[#CBD5E1] px-3 py-1 text-xs font-semibold text-[#475569] transition hover:bg-[#F8FAFC]"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <ProfesionalSidebar profile={profile} active={active} />
+                </div>
+              </div>
             </div>
           ) : null}
 

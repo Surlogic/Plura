@@ -398,6 +398,86 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
   return layouts;
 };
 
+const WeekAgendaList = memo(function WeekAgendaList({
+  weekDays,
+  todayKey,
+  dayLayoutsByDate,
+  onReservationOpen,
+}: {
+  weekDays: WeekCalendarDay[];
+  todayKey: string;
+  dayLayoutsByDate: Map<string, ReservationLayout[]>;
+  onReservationOpen: (reservation: ProfessionalReservation) => void;
+}) {
+  return (
+    <div className="divide-y divide-[#EDF2F7] bg-white">
+      {weekDays.map((day) => {
+        const isToday = day.dateKey === todayKey;
+        const dayLayouts = [...(dayLayoutsByDate.get(day.dateKey) ?? [])].sort(
+          (a, b) => a.startMinutes - b.startMinutes,
+        );
+
+        return (
+          <section key={day.dateKey} className={`p-4 ${isToday ? 'bg-[#F0FDFA]' : ''}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className={`text-sm font-semibold ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                  {dayLabelsShort[day.dayKey]} {day.dayNumber}
+                </p>
+                <p className="mt-0.5 text-xs text-[#64748B]">{day.monthLabel}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${isToday ? 'bg-white text-[#0F766E]' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+                {dayLayouts.length} {dayLayouts.length === 1 ? 'turno' : 'turnos'}
+              </span>
+            </div>
+
+            {dayLayouts.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {dayLayouts.map((layout) => {
+                  const palette = getReservationStatusPalette(layout.reservation.status);
+                  const statusBadge = getReservationStatusBadge(layout.reservation.status);
+
+                  return (
+                    <button
+                      type="button"
+                      key={layout.reservation.id}
+                      onClick={() => onReservationOpen(layout.reservation)}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[#0F172A]">
+                            {layout.reservation.time || '--:--'}
+                          </p>
+                          <p className="mt-1 break-words text-sm font-semibold text-[#0F172A] [overflow-wrap:anywhere]">
+                            {layout.reservation.serviceName || 'Servicio'}
+                          </p>
+                          {layout.reservation.clientName ? (
+                            <p className="mt-0.5 break-words text-xs text-[#64748B] [overflow-wrap:anywhere]">
+                              {layout.reservation.clientName}
+                            </p>
+                          ) : null}
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[0.65rem] font-semibold ${statusBadge.className}`}>
+                          {statusBadge.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed border-[#CBD5E1] bg-white/75 px-3 py-3 text-sm text-[#64748B]">
+                Sin reservas para este día.
+              </p>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+});
+
 const WeekCalendarBoard = memo(function WeekCalendarBoard({
   weekDays,
   todayKey,
@@ -428,126 +508,136 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
     : null;
 
   return (
-    <div className="overflow-x-auto [scrollbar-width:thin]">
-      <div className="min-w-[820px] bg-white lg:min-w-0">
-        <div className="overflow-y-auto border-b border-[#EDF2F7] bg-[#F8FAFC] [scrollbar-gutter:stable] [scrollbar-width:thin]">
-          <div
-            className="grid"
-            style={{ gridTemplateColumns: weekCalendarGridTemplateColumns }}
-          >
-            <div className="px-2 py-2" aria-hidden="true" />
-            {weekDays.map((day) => {
-              const isToday = day.dateKey === todayKey;
-              return (
-                <div
-                  key={day.dateKey}
-                  className={`border-l border-[#EDF2F7] px-2 py-2 text-center ${isToday ? 'bg-[#F0FDFA]' : ''}`}
-                >
-                  <p className={`text-xs font-medium sm:text-sm ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
-                    {dayLabelsShort[day.dayKey]} {day.dayNumber}
-                  </p>
-                </div>
-              );
-            })}
+    <>
+      <div className="md:hidden">
+        <WeekAgendaList
+          weekDays={weekDays}
+          todayKey={todayKey}
+          dayLayoutsByDate={dayLayoutsByDate}
+          onReservationOpen={onReservationOpen}
+        />
+      </div>
+      <div className="hidden overflow-x-auto [scrollbar-width:thin] md:block">
+        <div className="min-w-[820px] bg-white lg:min-w-0">
+          <div className="overflow-y-auto border-b border-[#EDF2F7] bg-[#F8FAFC] [scrollbar-gutter:stable] [scrollbar-width:thin]">
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: weekCalendarGridTemplateColumns }}
+            >
+              <div className="px-2 py-2" aria-hidden="true" />
+              {weekDays.map((day) => {
+                const isToday = day.dateKey === todayKey;
+                return (
+                  <div
+                    key={day.dateKey}
+                    className={`border-l border-[#EDF2F7] px-2 py-2 text-center ${isToday ? 'bg-[#F0FDFA]' : ''}`}
+                  >
+                    <p className={`text-xs font-medium sm:text-sm ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                      {dayLabelsShort[day.dayKey]} {day.dayNumber}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        <div
-          ref={scrollContainerRef}
-          className="relative min-h-[390px] max-h-[520px] overflow-y-auto overscroll-contain scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] lg:max-h-[calc(100vh-276px)]"
-        >
           <div
-            className="grid"
-            style={{
-              gridAutoRows: `minmax(${hourRowHeight}px, auto)`,
-              gridTemplateColumns: weekCalendarGridTemplateColumns,
-            }}
+            ref={scrollContainerRef}
+            className="relative min-h-[390px] max-h-[520px] overflow-y-auto overscroll-contain scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] lg:max-h-[calc(100vh-276px)]"
           >
-            {hourMarkers.map((hourStartMinutes, rowIndex) => (
-              <Fragment key={hourStartMinutes}>
-                <div
-                  className={`bg-[#F8FAFC]/70 px-2 py-2 text-right text-[0.7rem] text-[#94A3B8] ${
-                    rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
-                  }`}
-                >
-                  {formatMinutesLabel(hourStartMinutes)}
-                </div>
-                {weekDays.map((day, index) => {
-                  const isToday = day.dateKey === todayKey;
-                  const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FCFDFE]';
-                  const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
-                  const reservationsInHour = dayLayouts.filter(
-                    (layout) =>
-                      layout.startMinutes >= hourStartMinutes
-                      && layout.startMinutes < hourStartMinutes + calendarLabelStepMinutes,
-                  );
-                  const showNowLine = currentTimeIndicator?.dateKey === day.dateKey
-                    && currentIndicatorMinutes !== null
-                    && currentIndicatorMinutes >= hourStartMinutes
-                    && currentIndicatorMinutes < hourStartMinutes + calendarLabelStepMinutes;
-                  const nowLineTop = currentIndicatorMinutes === null
-                    ? 0
-                    : ((currentIndicatorMinutes - hourStartMinutes) / calendarLabelStepMinutes) * hourRowHeight;
+            <div
+              className="grid"
+              style={{
+                gridAutoRows: `minmax(${hourRowHeight}px, auto)`,
+                gridTemplateColumns: weekCalendarGridTemplateColumns,
+              }}
+            >
+              {hourMarkers.map((hourStartMinutes, rowIndex) => (
+                <Fragment key={hourStartMinutes}>
+                  <div
+                    className={`bg-[#F8FAFC]/70 px-2 py-2 text-right text-[0.7rem] text-[#94A3B8] ${
+                      rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
+                    }`}
+                  >
+                    {formatMinutesLabel(hourStartMinutes)}
+                  </div>
+                  {weekDays.map((day, index) => {
+                    const isToday = day.dateKey === todayKey;
+                    const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FCFDFE]';
+                    const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
+                    const reservationsInHour = dayLayouts.filter(
+                      (layout) =>
+                        layout.startMinutes >= hourStartMinutes
+                        && layout.startMinutes < hourStartMinutes + calendarLabelStepMinutes,
+                    );
+                    const showNowLine = currentTimeIndicator?.dateKey === day.dateKey
+                      && currentIndicatorMinutes !== null
+                      && currentIndicatorMinutes >= hourStartMinutes
+                      && currentIndicatorMinutes < hourStartMinutes + calendarLabelStepMinutes;
+                    const nowLineTop = currentIndicatorMinutes === null
+                      ? 0
+                      : ((currentIndicatorMinutes - hourStartMinutes) / calendarLabelStepMinutes) * hourRowHeight;
 
-                  return (
-                    <div
-                      key={`${day.dateKey}-${hourStartMinutes}`}
-                      className={`relative border-l border-[#EDF2F7] p-1 ${
-                        rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
-                      } ${
-                        isToday ? 'bg-[#F0FDFA]' : baseBackground
-                      }`}
-                    >
-                      {showNowLine ? (
-                        <div
-                          className="pointer-events-none absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
-                          style={{ top: nowLineTop }}
-                        />
-                      ) : null}
-                      <div className="relative z-[2] space-y-1">
-                        {reservationsInHour.map((layout) => {
-                          const palette = getReservationStatusPalette(layout.reservation.status);
-                          const statusTextClassName = layout.reservation.status === 'pending'
-                            ? 'text-[#92400E]'
-                            : layout.reservation.status === 'cancelled'
-                              ? 'text-[#B91C1C]'
-                              : layout.reservation.status === 'completed'
-                                ? 'text-[#475569]'
-                                : layout.reservation.status === 'no_show'
-                                  ? 'text-[#6D28D9]'
-                                  : 'text-[#0F766E]';
+                    return (
+                      <div
+                        key={`${day.dateKey}-${hourStartMinutes}`}
+                        className={`relative border-l border-[#EDF2F7] p-1 ${
+                          rowIndex === hourMarkers.length - 1 ? '' : 'border-b border-[#EDF2F7]'
+                        } ${
+                          isToday ? 'bg-[#F0FDFA]' : baseBackground
+                        }`}
+                      >
+                        {showNowLine ? (
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
+                            style={{ top: nowLineTop }}
+                          />
+                        ) : null}
+                        <div className="relative z-[2] space-y-1">
+                          {reservationsInHour.map((layout) => {
+                            const palette = getReservationStatusPalette(layout.reservation.status);
+                            const statusTextClassName = layout.reservation.status === 'pending'
+                              ? 'text-[#92400E]'
+                              : layout.reservation.status === 'cancelled'
+                                ? 'text-[#B91C1C]'
+                                : layout.reservation.status === 'completed'
+                                  ? 'text-[#475569]'
+                                  : layout.reservation.status === 'no_show'
+                                    ? 'text-[#6D28D9]'
+                                    : 'text-[#0F766E]';
 
-                          return (
-                            <button
-                              type="button"
-                              key={layout.reservation.id}
-                              onClick={() => onReservationOpen(layout.reservation)}
-                              className={`w-full rounded-md border px-2 py-1.5 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
-                            >
-                              <p className="text-xs font-semibold leading-none text-[#0F172A]">
-                                {layout.reservation.time || '--:--'}
-                              </p>
-                              <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
-                                {layout.reservation.serviceName || 'Servicio'}
-                              </p>
-                              {layout.reservation.clientName ? (
-                                <p className="mt-0.5 truncate text-xs text-[#64748B]">
-                                  {layout.reservation.clientName}
+                            return (
+                              <button
+                                type="button"
+                                key={layout.reservation.id}
+                                onClick={() => onReservationOpen(layout.reservation)}
+                                className={`w-full rounded-md border px-2 py-1.5 text-left shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition hover:shadow-sm ${palette.card}`}
+                              >
+                                <p className="text-xs font-semibold leading-none text-[#0F172A]">
+                                  {layout.reservation.time || '--:--'}
                                 </p>
-                              ) : null}
-                            </button>
-                          );
-                        })}
+                                <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
+                                  {layout.reservation.serviceName || 'Servicio'}
+                                </p>
+                                {layout.reservation.clientName ? (
+                                  <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                                    {layout.reservation.clientName}
+                                  </p>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </Fragment>
-            ))}
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 });
 
@@ -566,21 +656,21 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
 
   return (
     <div className="overflow-hidden bg-white">
-      <div className="grid grid-cols-7 gap-1 border-b border-[#E2E8F0] bg-[#F8FAFC] px-2 text-center">
+      <div className="grid grid-cols-7 gap-0.5 border-b border-[#E2E8F0] bg-[#F8FAFC] px-1 text-center sm:gap-1 sm:px-2">
         {weekdayHeaderLabels.map((dayLabel) => (
-          <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
+          <div key={dayLabel} className="py-1.5 text-[0.64rem] font-semibold text-[#94A3B8] sm:py-2 sm:text-xs">
             {dayLabel}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1 p-2">
+      <div className="grid grid-cols-7 gap-0.5 p-1 sm:gap-1 sm:p-2">
         {monthGridDays.map((day) => {
           const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
           const count = dayReservations.length;
           return (
             <div
               key={day.dateKey}
-              className={`min-h-[96px] rounded-xl p-2 text-xs transition ${
+              className={`min-h-[52px] rounded-lg p-1 text-[0.68rem] transition sm:min-h-[96px] sm:rounded-xl sm:p-2 sm:text-xs ${
                 day.isToday
                   ? 'bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
                 : day.isCurrentMonth
@@ -588,13 +678,13 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
                     : 'bg-transparent text-[color:var(--border-strong)]'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-1 sm:gap-2">
                 <p className={`font-semibold ${day.isToday ? 'text-white' : ''}`}>
                   {day.day}
                 </p>
                 {count > 0 ? (
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold ${
+                    className={`rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold leading-none ${
                       day.isToday
                         ? 'bg-white/20 text-white'
                         : 'bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
@@ -605,7 +695,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
                 ) : null}
               </div>
               {count > 0 ? (
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 hidden space-y-1 sm:block">
                   {dayReservations.slice(0, 2).map((reservation) => {
                     const palette = getReservationStatusPalette(reservation.status);
                     return (
@@ -630,7 +720,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
           );
         })}
       </div>
-      <p className="border-t border-[#E2E8F0] py-3 text-center text-xs font-semibold uppercase tracking-[0.24em] text-[#94A3B8]">
+      <p className="border-t border-[#E2E8F0] py-3 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[#94A3B8] sm:tracking-[0.24em]">
         {monthLabel}
       </p>
     </div>

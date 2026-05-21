@@ -53,21 +53,24 @@ export default function PublicServicesSection({
   return (
     <section>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
             Servicios disponibles
           </p>
-          <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+          <h2 className="mt-2 break-words text-3xl font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
             Elegí tu opción ideal…
           </h2>
         </div>
-        <Badge variant="neutral" className="w-fit normal-case tracking-normal">
+        <Badge
+          variant="neutral"
+          className="w-fit max-w-full break-words whitespace-normal normal-case tracking-normal [overflow-wrap:anywhere]"
+        >
           {serviceItems.length} {serviceItems.length === 1 ? 'servicio disponible' : 'servicios disponibles'}
         </Badge>
       </div>
 
       {categories.length > 1 ? (
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-5 flex min-w-0 flex-wrap gap-2">
           {categories.map((category) => {
             const isActive = category === activeCategory;
             return (
@@ -75,7 +78,7 @@ export default function PublicServicesSection({
                 key={category}
                 type="button"
                 onClick={() => onCategoryChange(category)}
-                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                className={`max-w-full break-words rounded-full border px-4 py-2 text-left text-sm font-semibold transition [overflow-wrap:anywhere] ${
                   isActive
                     ? 'border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
                     : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] hover:-translate-y-0.5 hover:bg-white'
@@ -124,18 +127,21 @@ export default function PublicServicesSection({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="neutral" className="normal-case tracking-normal">
+                      <Badge
+                        variant="neutral"
+                        className="max-w-full break-words whitespace-normal normal-case tracking-normal [overflow-wrap:anywhere]"
+                      >
                         {item.categoryLabel}
                       </Badge>
                       <Badge variant="info" className="normal-case tracking-normal">
                         {formatServicePaymentType(item.service.paymentType)}
                       </Badge>
                     </div>
-                    <h3 className="mt-3 text-lg font-semibold text-[color:var(--ink)]">
+                    <h3 className="mt-3 break-words text-lg font-semibold text-[color:var(--ink)] [overflow-wrap:anywhere]">
                       {item.service.name}
                     </h3>
                     {item.service.description ? (
-                      <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-[color:var(--ink-muted)]">
+                      <p className="mt-1.5 line-clamp-2 break-words text-sm leading-6 text-[color:var(--ink-muted)] [overflow-wrap:anywhere]">
                         {item.service.description}
                       </p>
                     ) : (
@@ -164,11 +170,11 @@ export default function PublicServicesSection({
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 sm:justify-self-end">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-self-end">
                   <Button
                     type="button"
                     variant="quiet"
-                    className="border border-[color:var(--border-soft)] bg-white"
+                    className="w-full justify-center border border-[color:var(--border-soft)] bg-white sm:w-auto"
                     onClick={() => onOpenServiceDetail(item.index)}
                   >
                     Ver detalle
@@ -176,6 +182,7 @@ export default function PublicServicesSection({
                   <Button
                     type="button"
                     variant="primary"
+                    className="w-full justify-center sm:w-auto"
                     onClick={() => onReserveService(item.index)}
                   >
                     Reservar

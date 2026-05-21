@@ -36,18 +36,15 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
   ),
   reservas: (
     <>
-      <path d="M8 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-      <path d="M16 11a3 3 0 1 0 0-6" />
-      <path d="M3.5 19c1.2-2.4 3.4-4 6.5-4s5.3 1.6 6.5 4" />
-      <path d="M15.5 15c2 0 3.8 1.1 5 3" />
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <path d="M16 3v4M8 3v4M3 11h18" />
+      <path d="m8 16 2.5 2.5L16 13" />
     </>
   ),
   notificaciones: (
     <>
-      <path d="M6.5 16.5h11" />
-      <path d="M8 16.5V10a4 4 0 1 1 8 0v6.5" />
-      <path d="M5 16.5h14" />
-      <path d="M10 19a2.25 2.25 0 0 0 4 0" />
+      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" />
+      <path d="M10 21a2.5 2.5 0 0 0 4 0" />
     </>
   ),
   horarios: (
@@ -58,22 +55,35 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
   ),
   servicios: (
     <>
-      <path d="M6 4v7M10 4v7M6 8h4M7.5 11 6 20M8.5 11 10 20" />
-      <path d="M15 4c0 3 0 5.5 3 7v3c0 1.5-.5 3-1.4 4.2L15 20" />
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M20 4 8.1 15.9" />
+      <path d="M14.5 14.5 20 20" />
+      <path d="M8.1 8.1 12 12" />
     </>
   ),
   negocio: (
     <>
       <path d="M4 10 5.5 5h13L20 10" />
-      <path d="M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
-      <path d="M9 20v-5h6v5" />
+      <path d="M4 10h16" />
+      <path d="M5 10v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9" />
+      <path d="M9 21v-6h6v6" />
+      <path d="M8 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M12 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M16 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M20 10v2a2 2 0 0 1-4 0v-2" />
     </>
   ),
   publica: (
     <>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M3.5 12h17" />
-      <path d="M12 3.5c2.4 2.2 3.8 5.2 3.8 8.5s-1.4 6.3-3.8 8.5c-2.4-2.2-3.8-5.2-3.8-8.5S9.6 5.7 12 3.5Z" />
+      <path d="M4 10 5.5 5h13L20 10" />
+      <path d="M4 10h16" />
+      <path d="M5 10v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9" />
+      <path d="M9 21v-6h6v6" />
+      <path d="M8 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M12 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M16 10v2a2 2 0 0 1-4 0v-2" />
+      <path d="M20 10v2a2 2 0 0 1-4 0v-2" />
     </>
   ),
   configuracion: (
@@ -122,10 +132,10 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
   ),
   facturacion: (
     <>
-      <path d="M7 3.5h8.5L19 7v13.5H7z" />
-      <path d="M15.5 3.5V7H19" />
-      <path d="M12 8v8" />
-      <path d="M14.5 10.2c-.45-.55-1.1-.85-2-.85-1.15 0-2 .62-2 1.55 0 1.05.95 1.35 2.1 1.65 1.05.28 2.05.62 2.05 1.72 0 .93-.83 1.63-2.05 1.63-1 0-1.75-.35-2.25-1" />
+      <path d="M6 3.5h12v17l-2-1.25-2 1.25-2-1.25-2 1.25-2-1.25-2 1.25v-17Z" />
+      <path d="M9 8h6" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
     </>
   ),
   danger: (
@@ -137,7 +147,8 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
   ),
   resenas: (
     <>
-      <path d="m12 3 2.5 5.1L20 9l-4 3.9.9 5.6L12 15.8l-4.9 2.7.9-5.6L4 9l5.5-.9L12 3Z" />
+      <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+      <path d="m12 8 1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5L11 10l1-2Z" />
     </>
   ),
   equipo: (

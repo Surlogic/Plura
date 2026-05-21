@@ -97,6 +97,7 @@ public class BookingCommandApplicationService {
     private final MeterRegistry meterRegistry;
     private final PasswordEncoder passwordEncoder;
     private final ZoneId systemZoneId;
+    private final boolean requirePhoneVerificationForBookings;
 
     public BookingCommandApplicationService(
         ProfessionalProfileRepository professionalProfileRepository,
@@ -119,7 +120,8 @@ public class BookingCommandApplicationService {
         BookingNotificationIntegrationService bookingNotificationIntegrationService,
         MeterRegistry meterRegistry,
         PasswordEncoder passwordEncoder,
-        @Value("${app.timezone:America/Montevideo}") String appTimezone
+        @Value("${app.timezone:America/Montevideo}") String appTimezone,
+        @Value("${app.booking.require-phone-verification:false}") boolean requirePhoneVerificationForBookings
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
         this.profesionalServiceRepository = profesionalServiceRepository;
@@ -142,6 +144,7 @@ public class BookingCommandApplicationService {
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
         this.systemZoneId = ZoneId.of(appTimezone);
+        this.requirePhoneVerificationForBookings = requirePhoneVerificationForBookings;
     }
 
     /**
@@ -158,7 +161,7 @@ public class BookingCommandApplicationService {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             User user = professionalAccessSupport.loadActiveUser(rawUserId, "Usuario no encontrado");
-            if (user.getPhoneVerifiedAt() == null) {
+            if (requirePhoneVerificationForBookings && user.getPhoneVerifiedAt() == null) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Necesitás verificar tu celular antes de reservar.");
             }
             boolean emailVerificationRequired =

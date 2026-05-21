@@ -4,7 +4,7 @@ Este documento cruza el stack tecnico actual con las necesidades del producto de
 
 ## Stack principal
 
-- Monorepo `pnpm`
+- Monorepo `pnpm`, fijado en `packageManager=pnpm@9.15.9` para que Corepack use una version compatible con el lockfile actual
 - Web: `Next.js 16`, `React 19`, `TypeScript`
 - Mobile: `Expo 54`, `React Native 0.81`, `expo-router`
 - el `package.json` raiz usa `pnpm.overrides` para fijar versiones parcheadas de dependencias transitivas auditadas por seguridad sin subir de SDK Expo ni cambiar contratos de runtime
@@ -219,6 +219,7 @@ Variables de backend para OTP SMS opcional de registro con Vonage Verify API:
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_COOLDOWN_SECONDS`
+- `APP_BOOKING_REQUIRE_PHONE_VERIFICATION` — default `false`; permite reactivar rapido el bloqueo de reservas por telefono no verificado (`true` exige `phoneVerifiedAt` para `POST /public/profesionales/{slug}/reservas`).
 
 `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED` ya no vuelve obligatorio el OTP del registro cliente; el alta cliente guarda telefono sin token y solo marca `phoneVerifiedAt` cuando recibe un `phoneVerificationToken` valido.
 
@@ -367,7 +368,7 @@ Lectura de producto:
 - mobile usa `expo-web-browser` para abrir checkout de reservas y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo; no abre checkout de cambio de plan durante el MVP
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
-- mobile ya no consume `Ionicons` directo desde `@expo/vector-icons`: usa un wrapper local en `apps/mobile/src/lib/icons.ts` con `Ionicons.ttf` embebido en `apps/mobile/assets/fonts/Ionicons.ttf`, y `apps/mobile/app/_layout.tsx` lo precarga antes de renderizar pantallas para evitar fallas de `ExpoAsset.downloadAsync` en dev client
+- mobile ya no consume `Ionicons` directo desde `@expo/vector-icons`: usa un wrapper local en `apps/mobile/src/lib/icons.ts` con `Ionicons.ttf` embebido en `apps/mobile/assets/fonts/Ionicons.ttf`, y `apps/mobile/app/_layout.tsx` lo precarga con `expo-font` antes de renderizar pantallas para evitar fallas de `ExpoAsset.downloadAsync` en dev client
 - `EXPO_PUBLIC_API_URL` ya no tiene fallback silencioso en release mobile: si falta fuera de `__DEV__`, el bundle falla temprano para evitar builds que apunten accidentalmente a localhost
 - el estado local de permiso push se persiste junto con preferencias del cliente en storage seguro y, cuando existe sesion cliente autenticada, mobile sincroniza el `push token` contra `PUT /cliente/notificaciones/push-token`
 - si el cliente desactiva push desde la app pero el permiso del sistema sigue en `granted`, mobile respeta ese opt-out local y no lo reactiva solo al volver a foreground

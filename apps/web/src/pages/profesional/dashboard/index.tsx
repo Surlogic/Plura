@@ -47,6 +47,8 @@ const dayKeyByIndex: Record<number, WorkDayKey> = {
   6: 'sat',
 };
 
+type WeekStartDay = 'mon' | 'sun';
+
 const monthNames = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -63,14 +65,19 @@ const toLocalDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const startOfWeek = (date: Date) => {
+const startOfWeek = (date: Date, weekStartsOn: WeekStartDay = 'mon') => {
   const result = new Date(date);
   const day = result.getDay();
-  const diff = (day + 6) % 7;
+  const diff = weekStartsOn === 'mon' ? (day + 6) % 7 : day;
   result.setDate(result.getDate() - diff);
   result.setHours(0, 0, 0, 0);
   return result;
 };
+
+const getWeekdayHeaderLabels = (weekStartsOn: WeekStartDay) =>
+  weekStartsOn === 'sun'
+    ? ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+    : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const getMonthDateKeys = (date: Date) => {
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -118,14 +125,6 @@ const formatMinutesLabel = (minutes: number) => {
   const hours = Math.floor(safeMinutes / 60) % 24;
   const mins = safeMinutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-};
-const formatDateShort = (dateKey: string) => {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  const date = new Date(year, (month || 1) - 1, day || 1);
-  return new Intl.DateTimeFormat('es-AR', {
-    day: 'numeric',
-    month: 'short',
-  }).format(date);
 };
 const parseMoneyValue = (value?: string) => {
   if (!value) return 0;
@@ -556,15 +555,19 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
   monthGridDays,
   reservationsByDate,
   monthLabel,
+  weekStartsOn,
 }: {
   monthGridDays: MonthCalendarDay[];
   reservationsByDate: Map<string, ProfessionalReservation[]>;
   monthLabel: string;
+  weekStartsOn: WeekStartDay;
 }) {
+  const weekdayHeaderLabels = useMemo(() => getWeekdayHeaderLabels(weekStartsOn), [weekStartsOn]);
+
   return (
     <div className="overflow-hidden bg-white">
       <div className="grid grid-cols-7 gap-1 border-b border-[#E2E8F0] bg-[#F8FAFC] px-2 text-center">
-        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayLabel) => (
+        {weekdayHeaderLabels.map((dayLabel) => (
           <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
             {dayLabel}
           </div>
@@ -643,6 +646,7 @@ export default function ProfesionalDashboardPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
+  const [weekStartsOn, setWeekStartsOn] = useState<WeekStartDay>('mon');
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [clockNow, setClockNow] = useState(() => new Date());
@@ -670,28 +674,23 @@ export default function ProfesionalDashboardPage() {
     return undefined;
   }, [selectedReservation]);
 
-  const { today, todayKey, yesterdayKey, currentWeekStart } = useMemo(() => {
+  const { today, todayKey, yesterdayKey } = useMemo(() => {
     const t = new Date();
     const tKey = toLocalDateKey(t);
     const y = new Date(t);
     y.setDate(t.getDate() - 1);
-    const wStart = startOfWeek(t);
-    const wEnd = new Date(wStart);
-    wEnd.setDate(wStart.getDate() + 6);
     return {
       today: t,
       todayKey: tKey,
       yesterdayKey: toLocalDateKey(y),
-      currentWeekStart: wStart,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const canUseMonthlyCalendar = featureAccess.monthlyCalendar;
   const canNavigateCalendar = featureAccess.weeklyCalendarNavigation;
 
   // Navigated week — used for calendar display
   const weekDays = useMemo(() => {
-    const base = startOfWeek(today);
+    const base = startOfWeek(today, weekStartsOn);
     base.setDate(base.getDate() + weekOffset * 7);
     return Array.from({ length: 7 }).map((_, index) => {
       const date = new Date(base);
@@ -705,13 +704,12 @@ export default function ProfesionalDashboardPage() {
         monthLabel: monthNamesShort[date.getMonth()],
       };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekOffset]);
+  }, [today, weekOffset, weekStartsOn]);
 
   // Navigated month — used for calendar display
   const monthGridDays = useMemo(() => {
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-    const gridStart = startOfWeek(firstOfMonth);
+    const gridStart = startOfWeek(firstOfMonth, weekStartsOn);
     return Array.from({ length: 42 }).map((_, index) => {
       const date = new Date(gridStart);
       date.setDate(gridStart.getDate() + index);
@@ -724,11 +722,10 @@ export default function ProfesionalDashboardPage() {
         isToday: toLocalDateKey(date) === todayKey,
       };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthOffset, todayKey]);
+  }, [monthOffset, today, todayKey, weekStartsOn]);
 
   const calendarWeekLabel = useMemo(() => {
-    const base = startOfWeek(today);
+    const base = startOfWeek(today, weekStartsOn);
     base.setDate(base.getDate() + weekOffset * 7);
     const end = new Date(base);
     end.setDate(base.getDate() + 6);
@@ -737,14 +734,12 @@ export default function ProfesionalDashboardPage() {
       return `${base.getDate()} - ${end.getDate()} ${monthNamesShort[end.getMonth()]} ${end.getFullYear()}`;
     }
     return `${fmt(base)} - ${fmt(end)} ${end.getFullYear()}`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekOffset]);
+  }, [today, weekOffset, weekStartsOn]);
 
   const monthLabel = useMemo(() => {
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     return `${monthNames[firstOfMonth.getMonth()]} ${firstOfMonth.getFullYear()}`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthOffset]);
+  }, [monthOffset, today]);
   const agendaReservations = useMemo(
     () => reservations.filter((reservation) => (reservation.status ?? 'pending') !== 'cancelled'),
     [reservations],
@@ -794,14 +789,14 @@ export default function ProfesionalDashboardPage() {
   }, [schedule?.days]);
 
   const currentWeekDays = useMemo(() => {
+    const currentWeekStart = startOfWeek(today, weekStartsOn);
     return Array.from({ length: 7 }).map((_, index) => {
       const date = new Date(currentWeekStart);
       date.setDate(currentWeekStart.getDate() + index);
       const dayKey = dayKeyByIndex[date.getDay()];
       return { dayKey, dateKey: toLocalDateKey(date) };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [today, weekStartsOn]);
 
   const requiredReservationDatesRef = useRef<string[]>([]);
   const requiredReservationDates = useMemo(() => {
@@ -1253,12 +1248,30 @@ export default function ProfesionalDashboardPage() {
 
                 <div className="flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1">
                   <span className="text-xs text-[#64748B]">Inicia:</span>
-                  <span className="rounded-md bg-[#0F766E] px-1.5 py-0.5 text-[0.7rem] font-medium text-white">
+                  <button
+                    type="button"
+                    onClick={() => setWeekStartsOn('mon')}
+                    aria-pressed={weekStartsOn === 'mon'}
+                    className={`rounded-md px-1.5 py-0.5 text-[0.7rem] font-medium transition ${
+                      weekStartsOn === 'mon'
+                        ? 'bg-[#0F766E] text-white'
+                        : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
+                    }`}
+                  >
                     Lun
-                  </span>
-                  <span className="rounded-md px-1.5 py-0.5 text-[0.7rem] font-medium text-[#64748B]">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWeekStartsOn('sun')}
+                    aria-pressed={weekStartsOn === 'sun'}
+                    className={`rounded-md px-1.5 py-0.5 text-[0.7rem] font-medium transition ${
+                      weekStartsOn === 'sun'
+                        ? 'bg-[#0F766E] text-white'
+                        : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
+                    }`}
+                  >
                     Dom
-                  </span>
+                  </button>
                 </div>
 
                 <div className="flex items-center overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
@@ -1311,6 +1324,7 @@ export default function ProfesionalDashboardPage() {
                   monthGridDays={monthGridDays}
                   reservationsByDate={reservationsByDate}
                   monthLabel={monthLabel}
+                  weekStartsOn={weekStartsOn}
                 />
               </div>
             )}

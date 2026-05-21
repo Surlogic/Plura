@@ -12,9 +12,12 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
   DashboardHeaderBadge,
+  DashboardIcon,
+  type DashboardIconName,
   DashboardPageHeader,
   DashboardSectionHeading,
 } from '@/components/profesional/dashboard/DashboardUI';
+import { cn } from '@/components/ui/cn';
 import {
   cancelProfessionalBooking,
   completeProfessionalBooking,
@@ -97,18 +100,46 @@ const sortByDateTimeDesc = (a: ProfessionalReservation, b: ProfessionalReservati
 
 type ReservationColumnTone = 'today' | 'pending' | 'confirmed' | 'cancelled';
 
-const reservationColumnToneClasses: Record<ReservationColumnTone, string> = {
-  today: 'border-[#BFDBFE] bg-gradient-to-b from-[#EFF6FF] to-white',
-  pending: 'border-[#FDE68A] bg-gradient-to-b from-[#FFFBEB] to-white',
-  confirmed: 'border-[#BBF7D0] bg-gradient-to-b from-[#F0FDF4] to-white',
-  cancelled: 'border-[#FECACA] bg-gradient-to-b from-[#FEF2F2] to-white',
+const reservationColumnIconNames: Record<ReservationColumnTone, DashboardIconName> = {
+  today: 'reservas',
+  pending: 'horarios',
+  confirmed: 'check',
+  cancelled: 'danger',
 };
 
-const reservationColumnCountClasses: Record<ReservationColumnTone, string> = {
-  today: 'bg-[#DBEAFE] text-[#1D4ED8]',
-  pending: 'bg-[#FEF3C7] text-[#B45309]',
-  confirmed: 'bg-[#DCFCE7] text-[#15803D]',
-  cancelled: 'bg-[#FEE2E2] text-[#B91C1C]',
+const reservationColumnToneClasses: Record<
+  ReservationColumnTone,
+  {
+    shell: string;
+    icon: string;
+    count: string;
+    emptyIcon: string;
+  }
+> = {
+  today: {
+    shell: 'border-[#DCE8F7] bg-[#F8FBFF]',
+    icon: 'border-[#DDEBFF] bg-white text-[#2563EB]',
+    count: 'border-[#D9E8FF] bg-[#EEF6FF] text-[#1D4ED8]',
+    emptyIcon: 'bg-[#EEF6FF] text-[#8AB4EF]',
+  },
+  pending: {
+    shell: 'border-[#EFE1BE] bg-[#FFFDF7]',
+    icon: 'border-[#F2E3BC] bg-white text-[#B7791F]',
+    count: 'border-[#F0E0B4] bg-[#FFF7E3] text-[#A16207]',
+    emptyIcon: 'bg-[#FFF4D8] text-[#D5A23B]',
+  },
+  confirmed: {
+    shell: 'border-[#D8EDE2] bg-[#F8FFFB]',
+    icon: 'border-[#D9EFE3] bg-white text-[#0F8A5F]',
+    count: 'border-[#D6ECDC] bg-[#ECFBF2] text-[#15803D]',
+    emptyIcon: 'bg-[#ECFBF2] text-[#70B88E]',
+  },
+  cancelled: {
+    shell: 'border-[#F0D9D9] bg-[#FFFAFA]',
+    icon: 'border-[#F1D7D7] bg-white text-[#C2413D]',
+    count: 'border-[#F0D1D1] bg-[#FFF0F0] text-[#B91C1C]',
+    emptyIcon: 'bg-[#FFF0F0] text-[#E08A8A]',
+  },
 };
 
 const buildDateWindow = (daysPast: number, daysFuture: number) => {
@@ -607,40 +638,51 @@ export default function ProfesionalReservationsPage() {
     return (
       <article
         key={reservation.id}
-        className={`rounded-[16px] border p-4 transition ${
+        className={cn(
+          'rounded-[14px] border px-3 py-3 text-left transition',
           reservation.id === selectedReservationId
-            ? 'border-[#1FB6A6]/40 bg-[#F0FDFA]'
-            : 'border-[#E2E7EC] bg-white hover:border-[#CBD5E1]'
-        }`}
+            ? 'border-[#1FB6A6]/45 bg-[#F3FFFC] shadow-[0_6px_18px_rgba(31,182,166,0.08)]'
+            : 'border-[#E3EAF1] bg-white hover:border-[#C9D6E2] hover:shadow-[0_8px_20px_rgba(15,23,42,0.05)]',
+        )}
       >
-        <div className="min-w-0 space-y-2">
-          <p className="text-[0.95rem] font-semibold leading-tight text-[#0E2A47]">
-            {reservationTimeLabel || reservation.time || '--:--'} · {reservation.serviceName || 'Servicio'}
-          </p>
-          <p className="truncate text-sm text-[#475569]">
-            {reservation.clientName || 'Cliente'}
-          </p>
-          <p className="text-xs font-medium text-[#64748B]">{reservationDateLabel}</p>
-          <div className="flex flex-wrap gap-2">
-            <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${operationalStatusTone[status]}`}>
-              {operationalStatusLabel[status]}
-            </span>
-            <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-[0.72rem] font-semibold text-[#475569]">
-              {getPaymentTypeLabel(reservation.paymentType)}
-            </span>
-            <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${financialCopy.tone}`}>
-              {financialCopy.label}
-            </span>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              {reservationDateLabel}
+            </p>
+            <h3 className="mt-1 truncate text-[0.94rem] font-semibold leading-tight text-[#0E2A47]">
+              {reservationTimeLabel || reservation.time || '--:--'} · {reservation.clientName || 'Cliente'}
+            </h3>
+            <p className="mt-1 truncate text-sm text-[#475569]">
+              {reservation.serviceName || 'Servicio'}
+            </p>
           </div>
+          <span
+            className={cn(
+              'shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold',
+              operationalStatusTone[status],
+            )}
+          >
+            {operationalStatusLabel[status]}
+          </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-[0.7rem] font-semibold text-[#475569]">
+            {getPaymentTypeLabel(reservation.paymentType)}
+          </span>
+          <span className={cn('rounded-full px-2.5 py-1 text-[0.7rem] font-semibold', financialCopy.tone)}>
+            {financialCopy.label}
+          </span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {showConfirmAction ? (
             <button
               type="button"
               disabled={isSubmittingAction}
               onClick={() => handleQuickConfirm(reservation)}
-              className="rounded-full bg-[#D1FAE5] px-3 py-1.5 text-xs font-semibold text-[#047857] transition hover:bg-[#A7F3D0] disabled:opacity-60"
+              className="rounded-full bg-[#D1FAE5] px-2.5 py-1 text-[0.72rem] font-semibold text-[#047857] transition hover:bg-[#A7F3D0] disabled:opacity-60"
             >
               Confirmar
             </button>
@@ -650,7 +692,7 @@ export default function ProfesionalReservationsPage() {
               type="button"
               disabled={isSubmittingAction}
               onClick={() => handleQuickCancel(reservation)}
-              className="rounded-full border border-[#FECACA] bg-[#FEF2F2] px-3 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:opacity-60"
+              className="rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-1 text-[0.72rem] font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -659,7 +701,7 @@ export default function ProfesionalReservationsPage() {
             <button
               type="button"
               onClick={() => handleQuickReschedule(reservation)}
-              className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#475569] transition hover:border-[#CBD5E1]"
+              className="rounded-full border border-[#E2E7EC] bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#CBD5E1]"
             >
               Reagendar
             </button>
@@ -667,7 +709,7 @@ export default function ProfesionalReservationsPage() {
           <button
             type="button"
             onClick={() => handleSelectReservation(reservation.id)}
-            className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#0E2A47] transition hover:border-[#CBD5E1]"
+            className="rounded-full border border-[#E2E7EC] bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-[#0E2A47] transition hover:border-[#CBD5E1]"
           >
             Ver detalle
           </button>
@@ -680,38 +722,82 @@ export default function ProfesionalReservationsPage() {
     title,
     subtitle,
     reservations: columnReservations,
-    emptyText,
+    emptyTitle,
+    emptyDescription,
     tone,
   }: {
     title: string;
     subtitle: string;
     reservations: ProfessionalReservation[];
-    emptyText: string;
+    emptyTitle: string;
+    emptyDescription: string;
     tone: ReservationColumnTone;
-  }) => (
-    <section className={`flex min-h-0 min-w-0 flex-col rounded-[18px] border shadow-[0_4px_14px_rgba(15,23,42,0.04)] md:min-h-[520px] ${reservationColumnToneClasses[tone]}`}>
-      <div className="flex items-start justify-between gap-3 border-b border-white/70 px-4 py-4">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-[#0E2A47]">{title}</h2>
-          <p className="mt-1 text-sm leading-5 text-[#64748B]">{subtitle}</p>
-        </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${reservationColumnCountClasses[tone]}`}>
-          {columnReservations.length}
-        </span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {columnReservations.length === 0 ? (
-          <div className="flex min-h-[160px] items-center justify-center rounded-[16px] border border-dashed border-[#CBD5E1] bg-white/75 px-4 py-6 text-center text-sm text-[#64748B] md:min-h-[260px]">
-            {emptyText}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {columnReservations.map((reservation) => renderReservationCard(reservation, tone))}
-          </div>
+  }) => {
+    const toneClasses = reservationColumnToneClasses[tone];
+    const iconName = reservationColumnIconNames[tone];
+
+    return (
+      <section
+        className={cn(
+          'flex min-h-0 min-w-0 flex-col rounded-[18px] border shadow-[0_4px_14px_rgba(15,23,42,0.03)] md:min-h-[500px]',
+          toneClasses.shell,
         )}
-      </div>
-    </section>
-  );
+      >
+        <div className="px-4 py-4">
+          <div className="flex items-start gap-3">
+            <span
+              className={cn(
+                'mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border',
+                toneClasses.icon,
+              )}
+              aria-hidden="true"
+            >
+              <DashboardIcon name={iconName} className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full border px-2.5 py-0.5 text-sm font-semibold',
+                    toneClasses.count,
+                  )}
+                >
+                  {columnReservations.length}
+                </span>
+                <h2 className="min-w-0 text-base font-semibold leading-tight text-[#0E2A47]">
+                  {title}
+                </h2>
+              </div>
+              <p className="mt-2 text-sm leading-5 text-[#64748B]">{subtitle}</p>
+            </div>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+          {columnReservations.length === 0 ? (
+            <div className="flex min-h-[190px] flex-col items-center justify-center rounded-[16px] border border-[#E4EBF2] bg-white/75 px-5 py-7 text-center md:min-h-[250px]">
+              <span
+                className={cn(
+                  'inline-flex h-14 w-14 items-center justify-center rounded-full',
+                  toneClasses.emptyIcon,
+                )}
+                aria-hidden="true"
+              >
+                <DashboardIcon name={iconName} className="h-7 w-7" />
+              </span>
+              <p className="mt-4 text-sm font-semibold leading-5 text-[#0E2A47]">{emptyTitle}</p>
+              <p className="mt-2 max-w-[15rem] text-sm leading-5 text-[#64748B]">
+                {emptyDescription}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {columnReservations.map((reservation) => renderReservationCard(reservation, tone))}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <ProfessionalDashboardShell profile={profile} active="Reservas">
@@ -720,6 +806,7 @@ export default function ProfesionalReservationsPage() {
                 eyebrow="Reservas"
                 title="Panel de reservas"
                 description="Listado, detalle, acciones y timeline en una misma vista operativa."
+                withDivider={false}
                 meta={(
                   <>
                     <DashboardHeaderBadge tone="success">
@@ -728,11 +815,6 @@ export default function ProfesionalReservationsPage() {
                     <DashboardHeaderBadge>
                       {pendingReservations.length} pendientes
                     </DashboardHeaderBadge>
-                    {selectedReservation ? (
-                      <DashboardHeaderBadge tone="accent">
-                        Seleccionada: {selectedReservation.clientName || 'Cliente'}
-                      </DashboardHeaderBadge>
-                    ) : null}
                   </>
                 )}
                 actions={(
@@ -871,28 +953,32 @@ export default function ProfesionalReservationsPage() {
                         title: 'Reservas de hoy',
                         subtitle: 'Turnos de hoy que no están cancelados.',
                         reservations: todayReservations,
-                        emptyText: 'No tenés reservas activas para hoy.',
+                        emptyTitle: 'No tenés reservas activas para hoy.',
+                        emptyDescription: 'Las reservas para hoy aparecerán acá cuando existan.',
                         tone: 'today',
                       })}
                       {renderReservationColumn({
                         title: 'Pendientes de confirmación',
                         subtitle: 'Reservas que necesitan confirmación del negocio.',
                         reservations: pendingReservations,
-                        emptyText: 'No hay reservas pendientes de confirmación.',
+                        emptyTitle: 'No hay reservas pendientes de confirmación.',
+                        emptyDescription: 'Las reservas que requieran tu confirmación aparecerán acá.',
                         tone: 'pending',
                       })}
                       {renderReservationColumn({
                         title: 'Próximas reservas confirmadas',
                         subtitle: 'Turnos futuros ya confirmados en agenda.',
                         reservations: upcomingConfirmedReservations,
-                        emptyText: 'No hay reservas futuras confirmadas.',
+                        emptyTitle: 'No hay reservas futuras confirmadas.',
+                        emptyDescription: 'Las próximas reservas confirmadas se mostrarán acá.',
                         tone: 'confirmed',
                       })}
                       {renderReservationColumn({
                         title: 'Canceladas',
                         subtitle: 'Reservas canceladas y su seguimiento.',
                         reservations: cancelledReservations,
-                        emptyText: 'No hay reservas canceladas.',
+                        emptyTitle: 'No hay reservas canceladas.',
+                        emptyDescription: 'Las reservas canceladas aparecerán acá cuando existan.',
                         tone: 'cancelled',
                       })}
                     </div>

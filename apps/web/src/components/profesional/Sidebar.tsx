@@ -11,6 +11,7 @@ import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDa
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { fetchAuthMe, hasContext, selectAuthContext } from '@/lib/auth/contexts';
 import { cn } from '@/components/ui/cn';
+import Logo from '@/components/ui/Logo';
 import {
   DashboardIcon,
   type DashboardIconName,
@@ -116,7 +117,6 @@ function ProfesionalSidebar({
   const displayMeta = profile?.rubro || 'Cuenta profesional';
   const resolvedLogoUrl = resolveAssetUrl(profile?.logoUrl);
 
-  const planLabel = 'Core';
   const notificationBadgeCount = formatNotificationBadgeCount(unreadNotificationCount);
 
   useEffect(() => {
@@ -170,44 +170,47 @@ function ProfesionalSidebar({
   return (
     <aside
       ref={rootRef}
-      className={cn(
-        'relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]',
-        !collapsed && '[scrollbar-gutter:stable]',
-      )}
+      className="relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]"
     >
-      <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-5' : 'px-5 py-5')}>
-        <div className={cn(collapsed ? 'flex justify-center' : 'flex items-start gap-4')}>
-          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'flex-col gap-3')}>
+      <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-4' : 'px-4 py-4')}>
+        <div className={cn('flex flex-col', collapsed ? 'items-center gap-4' : 'gap-5')}>
+          <Logo
+            href="/profesional/dashboard"
+            size={collapsed ? 26 : 28}
+            variant={collapsed ? 'symbol' : 'default'}
+            className={cn(collapsed ? 'justify-center' : 'w-fit')}
+            textClassName="text-[#087A62]"
+            priority
+          />
+          <div className={cn('flex min-w-0 items-center', collapsed ? 'justify-center' : 'gap-3')}>
             <div
               className={cn(
-                'relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#DFFBF2] font-semibold text-[#087A62]',
-                collapsed ? 'h-11 w-11 text-base' : 'h-[52px] w-[52px] text-xl',
+                'relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#DFFBF2] font-semibold text-[#087A62]',
+                collapsed ? 'h-11 w-11 text-base' : 'h-10 w-10 text-sm',
               )}
             >
-            {resolvedLogoUrl ? (
-              <Image
-                src={resolvedLogoUrl}
-                alt={`Logo de ${displayName}`}
-                fill
-                sizes={collapsed ? '44px' : '52px'}
-                className="object-cover"
-                style={buildProfessionalMediaStyle(profile?.logoMedia)}
-              />
-            ) : (
-              initials
-            )}
+              {resolvedLogoUrl ? (
+                <Image
+                  src={resolvedLogoUrl}
+                  alt={`Logo de ${displayName}`}
+                  fill
+                  sizes={collapsed ? '44px' : '40px'}
+                  className="object-cover"
+                  style={buildProfessionalMediaStyle(profile?.logoMedia)}
+                />
+              ) : (
+                initials
+              )}
             </div>
-            <span className={cn('inline-flex rounded-lg bg-[#DFFBF2] px-3 py-1 text-sm font-semibold leading-none text-[#087A62]', collapsed && 'hidden')}>
-              {planLabel}
-            </span>
-          </div>
-          <div className={cn('min-w-0 flex-1 pt-1 transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 overflow-hidden opacity-0')}>
-            <p className="whitespace-normal text-lg font-semibold leading-tight text-[#111827]">{displayName}</p>
+            <div className={cn('min-w-0 flex-1 transition-[max-width,opacity] duration-200', collapsed && 'hidden max-w-0 overflow-hidden opacity-0')}>
+              <p className="truncate text-sm font-semibold leading-tight text-[#111827]">{displayName}</p>
+              <p className="mt-0.5 truncate text-xs leading-tight text-[#64748B]">{displayMeta}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-x-hidden overflow-y-auto', collapsed ? 'px-1.5 py-5' : 'px-3 py-5')}>
+      <nav className={cn('flex-1 overflow-x-hidden overflow-y-auto', collapsed ? 'px-1.5 py-5' : 'px-2.5 py-5')}>
         {menuSections.map((section, sectionIndex) => (
           <div key={section.label} className={cn(collapsed ? 'mb-6' : 'mb-6')}>
             {collapsed && sectionIndex > 0 ? (
@@ -225,7 +228,7 @@ function ProfesionalSidebar({
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-3',
+                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-3',
                   isActive && !isDisabled
                     ? cn(
                         'bg-[#ECFDF5] text-[#087A62]',
@@ -317,7 +320,7 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto overflow-x-hidden py-5', collapsed ? 'px-1.5' : 'px-3')}>
+      <div className={cn('mt-auto overflow-x-hidden py-5', collapsed ? 'px-1.5' : 'px-2.5')}>
         <div className={cn('mx-auto mb-4 h-px bg-[#E2E8F0]', collapsed ? 'w-9' : 'w-full')} />
         <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
           {onToggleCollapsed ? (
@@ -326,7 +329,7 @@ function ProfesionalSidebar({
               onClick={onToggleCollapsed}
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
               )}
               aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
               aria-pressed={collapsed}
@@ -349,7 +352,7 @@ function ProfesionalSidebar({
               type="button"
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
               )}
               onClick={handleEnterAsClient}
               disabled={isSwitchingContext}
@@ -370,7 +373,7 @@ function ProfesionalSidebar({
             disabled={isLoggingOut}
             className={cn(
               'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
+              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2 rounded-xl px-2.5 py-2.5',
             )}
             title={collapsed ? 'Cerrar sesión' : undefined}
           >

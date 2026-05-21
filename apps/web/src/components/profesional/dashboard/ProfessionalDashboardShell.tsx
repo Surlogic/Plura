@@ -59,7 +59,7 @@ export default function ProfessionalDashboardShell({
         <aside
           className={cn(
             'hidden shrink-0 bg-[#F8FAFC] p-2 transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen',
-            isSidebarCollapsed ? 'w-[76px]' : 'w-[276px]',
+            isSidebarCollapsed ? 'w-[76px]' : 'w-[256px]',
           )}
         >
           <div className="h-full overflow-x-hidden overflow-y-auto overscroll-contain">

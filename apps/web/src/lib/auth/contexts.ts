@@ -5,6 +5,8 @@ import {
   type KnownAuthSessionRole,
 } from '@/services/session';
 
+const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
+
 export type AuthContextType = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
 
 export type AuthContextDescriptor = {
@@ -96,11 +98,19 @@ export const selectAuthContext = async (
   const descriptor = typeof descriptorOrType === 'string'
     ? { type: descriptorOrType }
     : descriptorOrType;
-  const response = await api.post<SelectContextResponse>('/auth/context/select', {
-    type: descriptor.type,
-    workerId: descriptor.workerId ?? undefined,
-    professionalId: descriptor.professionalId ?? undefined,
-  });
+  const response = await api.post<SelectContextResponse>(
+    '/auth/context/select',
+    {
+      type: descriptor.type,
+      workerId: descriptor.workerId ?? undefined,
+      professionalId: descriptor.professionalId ?? undefined,
+    },
+    {
+      headers: {
+        [SESSION_TRANSPORT_HEADER]: 'BODY',
+      },
+    },
+  );
   const active = response.data?.activeContext ?? descriptor;
   persistAccessTokenForContext(response.data?.accessToken, active);
   return active;

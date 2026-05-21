@@ -204,7 +204,7 @@ function ProfesionalSidebar({
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-2 py-5' : 'px-4 py-5')}>
+      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-2 py-5' : 'px-3 py-5')}>
         {menuSections.map((section, sectionIndex) => (
           <div key={section.label} className={cn(collapsed ? 'mb-6' : 'mb-6')}>
             {collapsed && sectionIndex > 0 ? (
@@ -222,7 +222,7 @@ function ProfesionalSidebar({
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-xl px-3 py-3',
+                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-3',
                   isActive && !isDisabled
                     ? cn(
                         'bg-[#ECFDF5] text-[#087A62]',
@@ -253,9 +253,9 @@ function ProfesionalSidebar({
                     </span>
                     <span
                       className={cn(
-                        'min-w-0 flex-1 truncate text-sm font-medium transition-[max-width,opacity] duration-200',
+                        'min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200',
                         isDisabled && 'opacity-60',
-                        collapsed && 'max-w-0 opacity-0',
+                        collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap',
                       )}
                     >
                       {item.label}
@@ -314,7 +314,7 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto py-5', collapsed ? 'px-2' : 'px-4')}>
+      <div className={cn('mt-auto py-5', collapsed ? 'px-2' : 'px-3')}>
         <div className={cn('mx-auto mb-4 h-px bg-[#E2E8F0]', collapsed ? 'w-9' : 'w-full')} />
         <div className={cn(collapsed ? 'space-y-4' : 'space-y-2')}>
           {onToggleCollapsed ? (
@@ -323,7 +323,7 @@ function ProfesionalSidebar({
               onClick={onToggleCollapsed}
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-xl px-3 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
               )}
               aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
               aria-pressed={collapsed}
@@ -335,7 +335,7 @@ function ProfesionalSidebar({
                   <path d="m18 7-5 5 5 5" />
                 </svg>
               </span>
-              <span className={cn('min-w-0 flex-1 truncate text-sm font-medium transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
                 Contraer menú
               </span>
             </button>
@@ -346,7 +346,7 @@ function ProfesionalSidebar({
               type="button"
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-xl px-3 py-2.5',
+                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
               )}
               onClick={handleEnterAsClient}
               disabled={isSwitchingContext}
@@ -355,7 +355,7 @@ function ProfesionalSidebar({
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
                 <DashboardIcon name="entrarCliente" className="h-5 w-5" />
               </span>
-              <span className={cn('min-w-0 flex-1 truncate text-sm font-medium transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+              <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
                 {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
               </span>
             </button>
@@ -367,7 +367,7 @@ function ProfesionalSidebar({
             disabled={isLoggingOut}
             className={cn(
               'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-xl px-3 py-2.5',
+              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-2.5 rounded-xl px-3 py-2.5',
             )}
             title={collapsed ? 'Cerrar sesión' : undefined}
           >
@@ -378,7 +378,7 @@ function ProfesionalSidebar({
                 <path d="M18 12H9" />
               </svg>
             </span>
-            <span className={cn('min-w-0 flex-1 truncate text-sm font-medium transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+            <span className={cn('min-w-0 flex-1 text-sm font-medium transition-[max-width,opacity] duration-200', collapsed ? 'max-w-0 truncate opacity-0' : 'whitespace-nowrap')}>
               {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
             </span>
           </button>

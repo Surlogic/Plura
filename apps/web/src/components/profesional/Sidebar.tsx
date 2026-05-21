@@ -170,7 +170,7 @@ function ProfesionalSidebar({
   return (
     <aside
       ref={rootRef}
-      className="relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]"
+      className="relative flex min-h-full max-w-full flex-col overflow-x-hidden rounded-none border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]"
     >
       <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-4' : 'px-4 py-4')}>
         <div className={cn('flex flex-col', collapsed ? 'items-center gap-4' : 'gap-5')}>
